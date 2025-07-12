@@ -88,88 +88,91 @@ export default function Campaign() {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-const handleSave = async (e: FormEvent) => {
-  e.preventDefault();
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
 
-  if (!form.startDate || !form.endDate) {
-    setError("Start and end dates are required.");
-    return;
-  }
-
-  const payload = {
-    name: form.name,
-    type: form.type,
-    status: form.status,
-    budget: form.budget,
-    expectedRevenue: form.expectedRevenue,
-    actualRevenue: form.actualRevenue || "0",
-    startDate: new Date(form.startDate).toISOString(),
-    endDate: new Date(form.endDate).toISOString(),
-    createdBy: "test-user-id",
-    updatedBy: "test-user-id", // ✅ this goes to update API
-  };
-
-  try {
-    let res: Response;
-
-    if (isUpdating && selectedId) {
-      res = await fetch(`http://localhost:5000/api/campaigns/${selectedId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      res = await fetch("http://localhost:5000/api/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    if (!form.startDate || !form.endDate) {
+      setError("Start and end dates are required.");
+      return;
     }
 
-    if (!res.ok) throw new Error(res.statusText);
-    const saved = await res.json();
-
-    // update local state
-    const entry: campaignData = {
-      id: saved._id,
-      name: saved.name,
-      type: saved.type,
-      status: saved.status,
-      budget: `$${parseFloat(saved.budget || "0").toLocaleString()}`,
-      expectedRevenue: `$${parseFloat(saved.expectedRevenue || "0").toLocaleString()}`,
-      actualRevenue: `$${parseFloat(saved.actualRevenue || "0").toLocaleString()}`,
-      startDate: new Date(saved.startDate).toISOString().split("T")[0],
-      endDate: new Date(saved.endDate).toISOString().split("T")[0],
+    const payload = {
+      name: form.name,
+      type: form.type,
+      status: form.status,
+      budget: form.budget,
+      expectedRevenue: form.expectedRevenue,
+      actualRevenue: form.actualRevenue || "0",
+      startDate: new Date(form.startDate).toISOString(),
+      endDate: new Date(form.endDate).toISOString(),
+      createdBy: "test-user-id",
+      updatedBy: "test-user-id", // ✅ this goes to update API
     };
+    console.log("Saving campaign:", payload);
+    try {
+      let res: Response;
 
-    setcampaigns((prev) =>
-      isUpdating
-        ? prev.map((c) => (c.id === selectedId ? entry : c))
-        : [...prev, entry]
-    );
+      if (isUpdating && selectedId) {
+        res = await fetch(`http://localhost:5000/api/campaigns/${selectedId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch("http://localhost:5000/api/campaigns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
-    setSuccess(isUpdating ? "Campaign updated!" : "Campaign created!");
-    setIsUpdating(false);
-    setSelectedId(null);
-    setShowForm(false);
+      if (!res.ok) throw new Error(res.statusText);
+      const saved = await res.json();
 
-    setForm({
-      name: "",
-      type: "Email",
-      status: "Planned",
-      budget: "",
-      expectedRevenue: "",
-      actualRevenue: "",
-      startDate: "",
-      endDate: "",
-    });
+      // update local state
+      const entry: campaignData = {
+        id: saved._id,
+        name: saved.name,
+        type: saved.type,
+        status: saved.status,
+        budget: `$${parseFloat(saved.budget || "0").toLocaleString()}`,
+        expectedRevenue: `$${parseFloat(
+          saved.expectedRevenue || "0"
+        ).toLocaleString()}`,
+        actualRevenue: `$${parseFloat(
+          saved.actualRevenue || "0"
+        ).toLocaleString()}`,
+        startDate: new Date(saved.startDate).toISOString().split("T")[0],
+        endDate: new Date(saved.endDate).toISOString().split("T")[0],
+      };
 
-    setTimeout(() => setSuccess(null), 3000);
-  } catch (err: any) {
-    setError(`Error saving campaign: ${err.message}`);
-  }
-};
+      setcampaigns((prev) =>
+        isUpdating
+          ? prev.map((c) => (c.id === selectedId ? entry : c))
+          : [...prev, entry]
+      );
 
+      setSuccess(isUpdating ? "Campaign updated!" : "Campaign created!");
+      setIsUpdating(false);
+      setSelectedId(null);
+      setShowForm(false);
+
+      setForm({
+        name: "",
+        type: "Email",
+        status: "Planned",
+        budget: "",
+        expectedRevenue: "",
+        actualRevenue: "",
+        startDate: "",
+        endDate: "",
+      });
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(`Error saving campaign: ${err.message}`);
+    }
+  };
 
   const handleCancel = () => {
     setShowForm(false);
@@ -190,14 +193,11 @@ const handleSave = async (e: FormEvent) => {
   const handleDelete = async (id: string) => {
     setDeleting(true);
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/campaigns/${id}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deletedBy : "test-user-id" }),
-        }
-      );
+      const res = await fetch(`http://localhost:5000/api/campaigns/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deletedBy: "test-user-id" }),
+      });
 
       if (!res.ok) throw new Error(res.statusText);
       setcampaigns((prev) => prev.filter((c) => c.id !== id));
@@ -224,12 +224,12 @@ const handleSave = async (e: FormEvent) => {
       startDate: new Date(c.startDate).toISOString().split("T")[0],
       endDate: new Date(c.endDate).toISOString().split("T")[0],
     });
+
     console.log("Updating campaign:", c);
     setIsUpdating(true);
     setSelectedId(id);
     setShowForm(true);
   };
-
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
