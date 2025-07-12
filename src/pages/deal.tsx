@@ -135,7 +135,7 @@ export default function DealPage() {
         const errorData = await res.json();
         throw new Error(errorData?.error || "Failed to save deal");
       }
-      const saved = await res.json(); // This will work because backend sends full deal
+      const saved = await res.json(); 
 
       setDeals((prev) =>
         editingId == null
