@@ -1,4 +1,3 @@
-
 import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { Plus, Sliders } from "lucide-react";
 import AddNewcampaign from "../components/AddNewCampaign";
@@ -95,14 +94,17 @@ export default function Campaign() {
       name: form.name,
       type: form.type,
       status: form.status,
-      budget: parseFloat(form.budget.replace(/[^0-9.]/g, "")),
-      expectedRevenue: parseFloat(form.expectedRevenue.replace(/[^0-9.]/g, "")),
-      actualRevenue: parseFloat(
-        form.actualRevenue.replace(/[^0-9.]/g, "") || "0"
-      ),
+      budget: form.budget, //parseFloat(form.budget.replace(/[^0-9.]/g, "")),
+      expectedRevenue:form.expectedRevenue,  // parseFloat(form.expectedRevenue.replace(/[^0-9.]/g, "")),
+      actualRevenue: form.actualRevenue || "0",
+      //  parseFloat(
+      //   form.actualRevenue.replace(/[^0-9.]/g, "") || "0"
+      // ),
       startDate: new Date(form.startDate).toISOString(),
       endDate: new Date(form.endDate).toISOString(),
+      createdBy: "test-user-id", // ✅ TEMP VALUE — replace with real user logic
     };
+   console.log("Saving campaign:", payload);
     try {
       let res: Response;
       if (isUpdating && selectedId) {
@@ -194,23 +196,26 @@ export default function Campaign() {
     }
   };
 
-  const handleUpdate = (id: string) => {
-    const c = campaigns.find((c) => c.id === id);
-    if (!c) return;
-    setForm({
-      name: c.name,
-      type: c.type,
-      status: c.status,
-      budget: c.budget.replace(/[^0-9.]/g, ""),
-      expectedRevenue: c.expectedRevenue.replace(/[^0-9.]/g, ""),
-      actualRevenue: c.actualRevenue.replace(/[^0-9.]/g, ""),
-      startDate: c.startDate,
-      endDate: c.endDate,
-    });
-    setIsUpdating(true);
-    setSelectedId(id);
-    setShowForm(true);
-  };
+const handleUpdate = (id: string) => {
+  const c = campaigns.find((c) => c.id === id);
+  if (!c) return;
+ setForm({
+  name: c.name,
+  type: c.type,
+  status: c.status,
+  budget: (c.budget || "").replace(/[^0-9.]/g, ""),
+  expectedRevenue: (c.expectedRevenue || "").replace(/[^0-9.]/g, ""),
+  actualRevenue: (c.actualRevenue || "").replace(/[^0-9.]/g, ""),
+  startDate: new Date(c.startDate).toISOString().split("T")[0],
+  endDate: new Date(c.endDate).toISOString().split("T")[0],
+});
+
+  console.log("Updating campaign:", c);
+  setIsUpdating(true);
+  setSelectedId(id);
+  setShowForm(true);
+};
+
 
   const handleDeleteAll = async () => {
     setDeleting(true);
@@ -233,7 +238,8 @@ export default function Campaign() {
 
   return (
     <div className="relative p-6 bg-emerald-50 dark:bg-gray-900 text-blue-900 dark:text-white min-h-screen overflow-auto">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold">Campaigns</h1>
         <div className="flex flex-col">
           {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
@@ -243,15 +249,19 @@ export default function Campaign() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          <button className="inline-flex items-center px-4 py-2 bg-blue-50  text-blue-600 dark:text-white rounded-full font-medium dark:bg-gray-700">
+      {/* Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 sm:p-6">
+        {/* Top Action Row */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+          <button className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 dark:text-white rounded-full font-medium dark:bg-gray-700">
             All campaigns
             <span className="ml-2 bg-blue-100 text-blue-700 dark:text-white dark:bg-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full">
               {campaigns.length}
             </span>
           </button>
-          <div className="flex items-center space-x-3">
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            {/* Actions Dropdown */}
             <div className="relative">
               <button
                 className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-blue-900 text-white flex items-center hover:bg-blue-800"
@@ -268,13 +278,6 @@ export default function Campaign() {
                   className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10"
                   onMouseLeave={() => setShowActions(false)}
                 >
-                  {/* <button
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900"
-                    onClick={() => selectedId && handleDelete(selectedId)}
-                    disabled={!selectedId || deleting}
-                  >
-                    {deleting ? "Deleting..." : "Delete Selected"}
-                  </button> */}
                   <button
                     className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900"
                     onClick={handleDeleteAll}
@@ -282,19 +285,11 @@ export default function Campaign() {
                   >
                     {deleting ? "Deleting..." : "Delete All"}
                   </button>
-                  {/* <button
-                    className="w-full text-left px-4 py-2 text-sm text-blue-900 dark:text-white hover:bg-blue-50 dark:hover:bg-gray-600"
-                    onClick={() => {
-                      setSelectedId(null);
-                      setShowActions(false);
-                    }}
-                    disabled={!selectedId || deleting}
-                  >
-                    Deselect
-                  </button> */}
                 </div>
               )}
             </div>
+
+            {/* Add Campaign */}
             <button
               className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
               onClick={() => {
@@ -309,28 +304,27 @@ export default function Campaign() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border-gray-200 dark:border-gray-700 border">
+        {/* Table */}
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
           {loading ? (
-            <p>Loading campaigns...</p>
+            <p className="p-4">Loading campaigns...</p>
           ) : campaigns.length === 0 ? (
-            <p>No campaigns found.</p>
+            <p className="p-4">No campaigns found.</p>
           ) : (
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800 text-sm">
               <thead className="bg-blue-50 dark:bg-gray-700 text-blue-900 dark:text-white">
-                <tr>
-                  <th className="px-6 py-3 font-semibold">Name</th>
-                  <th className="px-6 py-3 font-semibold text-left">Type</th>
-                  <th className="px-6 py-3 font-semibold text-left">Status</th>
-                  <th className="px-6 py-3 font-semibold text-left">Budget</th>
-                  <th className="px-6 py-3 font-semibold">Expected Revenue</th>
-                  <th className="px-6 py-3 font-semibold">Actual Revenue</th>
-                  <th className="px-6 py-3 font-semibold text-left">
-                    Start Date
+                <tr className="whitespace-nowrap">
+                  <th className="px-4 py-3 font-semibold text-left">Name</th>
+                  <th className="px-4 py-3 font-semibold text-left">Type</th>
+                  <th className="px-4 py-3 font-semibold text-left">Status</th>
+                  <th className="px-4 py-3 font-semibold text-left">Budget</th>
+                  <th className="px-4 py-3 font-semibold text-left">
+                    Expected
                   </th>
-                  <th className="px-6 py-3 font-semibold text-left">
-                    End Date
-                  </th>
-                  <th className="px-6 py-3 font-semibold text-center">
+                  <th className="px-4 py-3 font-semibold text-left">Actual</th>
+                  <th className="px-4 py-3 font-semibold text-left">Start</th>
+                  <th className="px-4 py-3 font-semibold text-left">End</th>
+                  <th className="px-4 py-3 font-semibold text-center">
                     Actions
                   </th>
                 </tr>
@@ -358,26 +352,25 @@ export default function Campaign() {
                         !deleting && setSelectedId(isSel ? null : c.id)
                       }
                       className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 
-                        
-                        ${ 
-                        isSel
-                          ? "bg-emerald-50 dark:bg-emerald-900"
-                          : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                      } ${deleting ? "opacity-50" : ""}`}
+                    ${
+                      isSel
+                        ? "bg-emerald-50 dark:bg-emerald-900"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    } ${deleting ? "opacity-50" : ""}`}
                     >
-                      <td className="px-6 py-4 text-center">{c.name}</td>
-                      <td className="px-6 py-4">{c.type}</td>
-                      <td className="px-6 py-4">{c.status}</td>
-                      <td className="px-6 py-4">{c.budget}</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-3">{c.name}</td>
+                      <td className="px-4 py-3">{c.type}</td>
+                      <td className="px-4 py-3">{c.status}</td>
+                      <td className="px-4 py-3">{c.budget}</td>
+                      <td className="px-4 py-3 text-left">
                         {c.expectedRevenue}
                       </td>
-                      <td className={`px-6 py-4 text-center ${color}`}>
+                      <td className={`px-4 py-3 text-left ${color}`}>
                         {c.actualRevenue}
                       </td>
-                      <td className="px-6 py-4">{c.startDate}</td>
-                      <td className="px-6 py-4">{c.endDate}</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-3">{c.startDate}</td>
+                      <td className="px-4 py-3">{c.endDate}</td>
+                      <td className="px-4 py-3 text-center">
                         <div className="inline-flex space-x-2">
                           <button
                             className="bg-green-500 text-white px-2 py-1 rounded text-sm"
@@ -410,8 +403,9 @@ export default function Campaign() {
         </div>
       </div>
 
+      {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50  backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md">
             <AddNewcampaign
               form={form}
@@ -423,6 +417,7 @@ export default function Campaign() {
         </div>
       )}
 
+      {/* Backdrop when actions open */}
       {showActions && (
         <div
           className="fixed inset-0 z-0"

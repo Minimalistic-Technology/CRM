@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Plus, Calendar } from "lucide-react";
 import AddNewDeal from "../components/AddNewDeal";
@@ -180,9 +178,9 @@ export default function DealPage() {
   }
 
   return (
-    <div className="p-6 min-h-screen bg-emerald-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="p-4 sm:p-6 min-h-screen bg-emerald-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-blue-900 dark:text-white">
           Deals
         </h1>
@@ -190,31 +188,36 @@ export default function DealPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow">
         {/* Tabs & Controls */}
-        <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 rounded-t-2xl dark:bg-gray-800">
-          <div className="inline-flex space-x-2">
+        <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl dark:bg-gray-800">
+          {/* Scrollable Tabs */}
+          <div className="flex overflow-x-auto no-scrollbar space-x-2 w-full sm:w-auto">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setSelectedTab(tab)}
-                className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap dark:text-white bg-blue-50 ${
+                className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
                   tab === selectedTab
-                    ? "dark:bg-gray-700 text-blue-600 dark:text-white "
+                    ? "bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-white"
                     : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
                 }`}
               >
                 {tab}
-                <span className="ml-2 text-blue-600 dark:bg-gray-600 dark:text-white bg-blue-100 text-xs font-semibold px-2 py-0.5 rounded-full">
+                <span className="ml-2 bg-blue-100 dark:bg-gray-600 text-blue-700 dark:text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                   {counts[tab]}
                 </span>
               </button>
             ))}
           </div>
 
-          <div className="flex items-center space-x-3" ref={actionsRef}>
+          {/* Actions */}
+          <div
+            className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto"
+            ref={actionsRef}
+          >
             <div className="relative">
               <button
                 onClick={() => setShowActions((v) => !v)}
-                className="flex items-center px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md bg-blue-900 hover:bg-blue-800 text-white"
+                className="flex items-center justify-center px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md bg-blue-900 hover:bg-blue-800 text-white w-full sm:w-auto"
               >
                 <Sliders className="mr-2" size={16} /> Actions
               </button>
@@ -254,21 +257,23 @@ export default function DealPage() {
 
             <button
               onClick={openAddForm}
-              className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
+              className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 w-full sm:w-auto"
             >
               <Plus className="mr-2" size={16} /> Add New Deal
             </button>
           </div>
         </div>
 
-        {/* Columns */}
-        <div className="grid grid-cols-5 gap-6">
+        {/* Responsive Columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 sm:p-6">
           {STAGES.map((stage, idx) => (
             <div
               key={stage}
               className={`${
-                idx > 0 ? "border-l border-gray-200 dark:border-gray-700" : ""
-              } p-6`}
+                idx > 0
+                  ? "sm:border-l border-gray-200 dark:border-gray-700"
+                  : ""
+              }`}
             >
               <h3 className="font-semibold mb-2 flex items-center justify-between text-blue-900 dark:text-white">
                 {stage}

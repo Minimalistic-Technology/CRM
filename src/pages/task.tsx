@@ -152,14 +152,17 @@ export default function Task() {
 
   return (
     <div className="p-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
+      {/* Top Bar: Title + Buttons */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-blue-900 dark:text-white">
           Tasks
         </h1>
       </div>
+
       <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow">
-        <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
-          <div className="inline-flex space-x-2">
+        {/* Tabs + Action Buttons */}
+        <div className="p-4 sm:p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
+          <div className="inline-flex space-x-2 overflow-x-auto">
             {TABS.map((tab) => (
               <button
                 key={tab}
@@ -177,7 +180,11 @@ export default function Task() {
               </button>
             ))}
           </div>
-          <div className="flex items-center space-x-3" ref={actionsRef}>
+
+          <div
+            className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3"
+            ref={actionsRef}
+          >
             <div className="relative">
               <button
                 onClick={() => setShowActions(!showActions)}
@@ -218,6 +225,7 @@ export default function Task() {
                 </div>
               )}
             </div>
+
             <button
               onClick={handleAdd}
               className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
@@ -226,14 +234,16 @@ export default function Task() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-6">
+
+        {/* Task Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {STATUSES.map((col, idx) => (
             <div
               key={col}
-              className={`${
+              className={`p-4 sm:p-6 ${
                 idx > 0
-                  ? "border-l border-gray-200 dark:border-gray-700 p-6"
-                  : "p-6"
+                  ? "sm:border-l border-gray-200 dark:border-gray-700"
+                  : ""
               }`}
             >
               <h3 className="font-semibold mb-2 flex items-center justify-between text-blue-900 dark:text-white">
@@ -242,6 +252,7 @@ export default function Task() {
                   {tasks.filter((t) => t.status === col).length}
                 </span>
               </h3>
+
               <div className="space-y-4 mt-4">
                 {tasks
                   .filter(
@@ -256,7 +267,7 @@ export default function Task() {
                       <div
                         key={t.id}
                         onClick={() => setSelectedCard(t.id)}
-                        className={`cursor-pointer rounded-lg shadow p-4 border ${
+                        className={`cursor-pointer rounded-lg shadow p-4 border transition duration-200 ${
                           isSelected
                             ? "bg-emerald-50 dark:bg-emerald-900 border-emerald-300 dark:border-emerald-600"
                             : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600"
@@ -300,8 +311,9 @@ export default function Task() {
         </div>
       </div>
 
+      {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-opacity-25 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center px-4">
           <AddNewTask
             form={form}
             onChange={handleInput}
