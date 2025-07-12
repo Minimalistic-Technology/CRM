@@ -38,7 +38,12 @@ const Leads: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (formData.leadOwner && formData.firstName && formData.lastName && formData.phone) {
+    if (
+      formData.leadOwner &&
+      formData.firstName &&
+      formData.lastName &&
+      formData.phone
+    ) {
       const newLead = { ...formData, id: Date.now() };
       setLeads([...leads, newLead]);
       setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
@@ -61,38 +66,36 @@ const Leads: React.FC = () => {
   };
 
   return (
-    <div className="relative p-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
+    <div className="relative p-4 sm:p-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-blue-900 dark:text-white">
           Leads
         </h1>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          <button className="inline-flex items-center px-4 py-2 bg-blue-50 dark:bg-gray-700  dark:text-white rounded-full font-medium">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <button className="inline-flex items-center px-4 py-2 bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-white rounded-full font-medium">
             All Leads
             <span className="ml-2 bg-blue-100 dark:bg-gray-600 text-blue-700 dark:text-white text-xs font-semibold px-2 py-0.5 rounded-full">
               {leads.length}
             </span>
           </button>
 
-          <div className="flex items-center space-x-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowActions((v) => !v);
                 }}
-                className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-blue-800 bg-blue-900 text-white flex items-center"
+                className="w-full sm:w-auto px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-blue-800 bg-blue-900 text-white flex items-center justify-center"
               >
                 <Sliders className="mr-2" size={16} /> Actions
               </button>
+
               {showActions && (
-                <div
-                  className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10"
-                  onMouseLeave={() => setShowActions(false)}
-                >
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -129,7 +132,7 @@ const Leads: React.FC = () => {
 
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
+              className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 w-full sm:w-auto"
             >
               <Plus className="mr-2" size={16} />
               Add Lead
@@ -144,10 +147,10 @@ const Leads: React.FC = () => {
           >
             <thead className="bg-blue-50 dark:bg-gray-700 text-blue-900 dark:text-white text-left">
               <tr>
-                <th className="px-6 py-3 font-semibold">Lead Owner</th>
-                <th className="px-6 py-3 font-semibold">First Name</th>
-                <th className="px-6 py-3 font-semibold">Last Name</th>
-                <th className="px-6 py-3 font-semibold">Phone</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Lead Owner</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">First Name</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Last Name</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -173,16 +176,16 @@ const Leads: React.FC = () => {
                           : "hover:bg-gray-100 dark:hover:bg-gray-700"
                       }`}
                     >
-                      <td className="px-6 py-4 text-blue-900 dark:text-white">
+                      <td className="px-4 sm:px-6 py-4 text-blue-900 dark:text-white">
                         {lead.leadOwner}
                       </td>
-                      <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
                         {lead.firstName}
                       </td>
-                      <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
                         {lead.lastName}
                       </td>
-                      <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
                         {lead.phone}
                       </td>
                     </tr>
@@ -195,19 +198,19 @@ const Leads: React.FC = () => {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-gray-800 bg-opacity-30 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 z-50 bg-gray-800 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
             <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
               Add Lead
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
                 type="text"
                 name="leadOwner"
                 placeholder="Lead Owner"
                 value={formData.leadOwner}
                 onChange={handleChange}
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2 rounded col-span-2"
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2 rounded sm:col-span-2"
               />
               <input
                 type="text"
@@ -231,17 +234,17 @@ const Leads: React.FC = () => {
                 placeholder="Phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2 rounded col-span-2"
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2 rounded sm:col-span-2"
               />
               <button
                 onClick={() => setShowForm(false)}
-                className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 rounded col-span-1"
+                className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 rounded"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded col-span-1"
+                className="bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded"
               >
                 Submit
               </button>

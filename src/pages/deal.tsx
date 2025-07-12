@@ -1,11 +1,9 @@
-
-
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Plus, Calendar } from "lucide-react";
 import AddNewDeal from "../components/AddNewDeal";
 
 interface Deal {
-  id: number;
+  _id: string;
   name: string;
   company: string;
   stage: Stage;
@@ -20,49 +18,6 @@ type Stage =
   | "Closed Won"
   | "Closed Lost";
 
-const INITIAL_DEALS: Deal[] = [
-  {
-    id: 1,
-    name: "Acme Renewal",
-    company: "Acme Corp",
-    stage: "Qualification",
-    closeDate: "2025-08-01",
-    dealValue: "25000",
-  },
-  {
-    id: 2,
-    name: "Globex Expansion",
-    company: "Globex Inc",
-    stage: "Need Analysis",
-    closeDate: "2025-09-15",
-    dealValue: "50000",
-  },
-  {
-    id: 3,
-    name: "Soylent Upsell",
-    company: "Soylent Co",
-    stage: "Negotiation",
-    closeDate: "2025-10-30",
-    dealValue: "75000",
-  },
-  {
-    id: 4,
-    name: "Tech Win",
-    company: "Tech Ltd",
-    stage: "Closed Won",
-    closeDate: "2025-11-01",
-    dealValue: "100000",
-  },
-  {
-    id: 5,
-    name: "Lost Opportunity",
-    company: "Lost Inc",
-    stage: "Closed Lost",
-    closeDate: "2025-11-02",
-    dealValue: "30000",
-  },
-];
-
 const TABS = ["All Deals"] as const;
 const STAGES: Stage[] = [
   "Qualification",
@@ -73,22 +28,36 @@ const STAGES: Stage[] = [
 ];
 
 export default function DealPage() {
-  const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [selectedTab, setSelectedTab] =
     useState<(typeof TABS)[number]>("All Deals");
   const [showActions, setShowActions] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedCard, setSelectedCard] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState<Omit<Deal, "id">>({
+  const [form, setForm] = useState<Omit<Deal, "_id">>({
     name: "",
     company: "",
     stage: "Qualification",
     closeDate: "",
     dealValue: "",
   });
+
+  useEffect(() => {
+    async function fetchDeals() {
+      try {
+        const res = await fetch("http://localhost:5000/api/deals");
+        const data = await res.json();
+        setDeals(data);
+      } catch (err) {
+        console.error("Failed to fetch deals", err);
+      }
+    }
+
+    fetchDeals();
+  }, []);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -125,35 +94,84 @@ export default function DealPage() {
   }
 
   function openEditForm(deal: Deal) {
-    setEditingId(deal.id);
+    setEditingId(deal._id);
     setForm({
       name: deal.name,
       company: deal.company,
       stage: deal.stage,
-      closeDate: deal.closeDate,
-      dealValue: deal.dealValue,
+      closeDate: deal.closeDate.split("T")[0],
+      dealValue: String(deal.dealValue),
     });
     setShowForm(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (editingId == null) {
-      setDeals((ds) => [...ds, { id: Date.now(), ...form }]);
-    } else {
-      setDeals((ds) =>
-        ds.map((d) => (d.id === editingId ? { id: editingId, ...form } : d))
+
+    const payload = {
+      ...form,
+      dealValue: parseFloat(form.dealValue),
+      closeDate: new Date(form.closeDate).toISOString(),
+      owner: "test-user-id",
+    };
+
+    try {
+      let res;
+      if (editingId == null) {
+        res = await fetch("http://localhost:5000/api/deals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch(`http://localhost:5000/api/deals/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData?.error || "Failed to save deal");
+      }
+      const saved = await res.json(); // This will work because backend sends full deal
+
+      setDeals((prev) =>
+        editingId == null
+          ? [...prev, saved]
+          : prev.map((d) => (d._id === saved._id ? saved : d))
       );
+    } catch (err) {
+      console.error("Error saving deal", err);
     }
+
     setShowForm(false);
     setEditingId(null);
   }
 
-  function handleDeleteSelected() {
-    if (selectedCard != null) {
-      setDeals((ds) => ds.filter((d) => d.id !== selectedCard));
+  async function handleDeleteSelected() {
+    if (!selectedCard) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/deals/${selectedCard}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData?.error || "Failed to delete deal");
+      }
+
+      setDeals((prev) => prev.filter((d) => d._id !== selectedCard));
       setSelectedCard(null);
+    } catch (err) {
+      console.error("Error deleting deal", err);
     }
+
     setShowActions(false);
   }
 
@@ -180,41 +198,42 @@ export default function DealPage() {
   }
 
   return (
-    <div className="p-6 min-h-screen bg-emerald-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 min-h-screen bg-emerald-50 dark:bg-gray-900 transition-colors duration-300">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-blue-900 dark:text-white">
           Deals
         </h1>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow">
-        {/* Tabs & Controls */}
-        <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 rounded-t-2xl dark:bg-gray-800">
-          <div className="inline-flex space-x-2">
+        <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl dark:bg-gray-800">
+          <div className="flex overflow-x-auto no-scrollbar space-x-2 w-full sm:w-auto">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setSelectedTab(tab)}
-                className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap dark:text-white bg-blue-50 ${
+                className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition ${
                   tab === selectedTab
-                    ? "dark:bg-gray-700 text-blue-600 dark:text-white "
+                    ? "bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-white"
                     : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
                 }`}
               >
                 {tab}
-                <span className="ml-2 text-blue-600 dark:bg-gray-600 dark:text-white bg-blue-100 text-xs font-semibold px-2 py-0.5 rounded-full">
+                <span className="ml-2 bg-blue-100 dark:bg-gray-600 text-blue-700 dark:text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                   {counts[tab]}
                 </span>
               </button>
             ))}
           </div>
 
-          <div className="flex items-center space-x-3" ref={actionsRef}>
+          <div
+            className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto"
+            ref={actionsRef}
+          >
             <div className="relative">
               <button
                 onClick={() => setShowActions((v) => !v)}
-                className="flex items-center px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md bg-blue-900 hover:bg-blue-800 text-white"
+                className="flex items-center justify-center px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md bg-blue-900 hover:bg-blue-800 text-white w-full sm:w-auto"
               >
                 <Sliders className="mr-2" size={16} /> Actions
               </button>
@@ -254,21 +273,22 @@ export default function DealPage() {
 
             <button
               onClick={openAddForm}
-              className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
+              className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 w-full sm:w-auto"
             >
               <Plus className="mr-2" size={16} /> Add New Deal
             </button>
           </div>
         </div>
 
-        {/* Columns */}
-        <div className="grid grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 sm:p-6">
           {STAGES.map((stage, idx) => (
             <div
               key={stage}
               className={`${
-                idx > 0 ? "border-l border-gray-200 dark:border-gray-700" : ""
-              } p-6`}
+                idx > 0
+                  ? "sm:border-l border-gray-200 dark:border-gray-700"
+                  : ""
+              }`}
             >
               <h3 className="font-semibold mb-2 flex items-center justify-between text-blue-900 dark:text-white">
                 {stage}
@@ -285,12 +305,12 @@ export default function DealPage() {
                       d.stage === stage
                   )
                   .map((d) => {
-                    const isSelected = selectedCard === d.id;
+                    const isSelected = selectedCard === d._id;
                     return (
                       <div
-                        key={d.id}
+                        key={d._id}
                         onClick={() =>
-                          setSelectedCard(isSelected ? null : d.id)
+                          setSelectedCard(isSelected ? null : d._id)
                         }
                         className={`cursor-pointer rounded-lg shadow p-4 border transition-colors ${
                           isSelected
@@ -317,7 +337,7 @@ export default function DealPage() {
                             </div>
                             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                               <Calendar size={14} className="mr-1" />
-                              {d.closeDate}
+                              {d.closeDate.split("T")[0]}
                             </div>
                           </div>
                         </div>
@@ -330,7 +350,6 @@ export default function DealPage() {
         </div>
       </div>
 
-      {/* Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4">
           <AddNewDeal

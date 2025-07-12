@@ -1,19 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { ChangeEvent, FormEvent } from "react";
 import { X } from "lucide-react";
 
