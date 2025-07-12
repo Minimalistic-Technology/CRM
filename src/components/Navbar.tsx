@@ -12,6 +12,16 @@ interface NavbarProps {
   className?: string;
 }
 
+interface Notification {
+  _id: string;
+  userId: string;
+  message: string;
+  type: "account" | "campaign" | "meeting" | "lead" | "deal";
+  read: boolean;
+  createdAt: string;
+  readAt?: string;
+}
+
 export function Navbar({
   width,
   sidebarOpen,
@@ -19,38 +29,31 @@ export function Navbar({
   className = "",
 }: NavbarProps) {
   const [mounted, setMounted] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+ 
+
+  const currentUserId = 2;
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Show menu icon:
-  // - Mobile (≤ 640px): when sidebar is closed
-  // - SM/MD (641px–1024px): when sidebar is closed
-  const showBurger =
-    mounted &&
-    ((width <= 640 && !sidebarOpen) ||
-      (width > 640 && width <= 1024 && !sidebarOpen));
-  console.log(
-    "Navbar - showBurger:",
-    showBurger,
-    "sidebarOpen:",
-    sidebarOpen,
-    "width:",
-    width
-  ); // Debug log
-
-  const [darkMode, setDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "revenue changed in Account table" },
-    { id: 2, message: "revenue changed in Account table" },
-    { id: 3, message: "revenue changed in Account table" },
-  ]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    fetchNotifications();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -62,8 +65,59 @@ export function Navbar({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const markAsRead = (id: number) =>
-    setNotifications((n) => n.filter((x) => x.id !== id));
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(
+        `http://localhost:5000/api/notifications/${currentUserId}`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setNotifications(data || []);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+      setError("Failed to fetch notifications");
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/notifications/read/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Remove the notification from the local state
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const unreadNotifications = notifications.filter((n) => !n.read);
+
+  // Show menu icon:
+  // - Mobile (≤ 640px): when sidebar is closed
+  // - SM/MD (641px–1024px): when sidebar is closed
+  const showBurger =
+    mounted &&
+    ((width <= 640 && !sidebarOpen) ||
+      (width > 640 && width <= 1024 && !sidebarOpen));
 
   return (
     <header
@@ -114,42 +168,85 @@ export function Navbar({
             className="relative p-1 rounded-md hover:bg-white/10 transition-colors"
           >
             <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" />
-            {notifications.length > 0 && (
+            {unreadNotifications.length > 0 && (
               <>
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  {unreadNotifications.length}
+                </span>
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping" />
               </>
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 top-full w-72 sm:w-80 md:w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 p-4">
-              <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                Notification
-              </h4>
-              <div className="space-y-4 max-h-80 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="group flex items-start justify-between space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
-                  >
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {n.message}
-                    </p>
-                    <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => markAsRead(n.id)}
-                    >
-                      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    </button>
+            <div className="absolute right-0 mt-2 top-full w-72 sm:w-80 md:w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Notifications
+                  </h4>
+                  {unreadNotifications.length > 0 && (
+                    <span className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded-full">
+                      {unreadNotifications.length} new
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {loading ? (
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    Loading notifications...
                   </div>
-                ))}
-                {notifications.length === 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                    No notifications
-                  </p>
+                ) : error ? (
+                  <div className="p-4 text-center text-red-500 dark:text-red-400">
+                    {error}
+                  </div>
+                ) : unreadNotifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    No new notifications
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {unreadNotifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        className="group flex items-start justify-between space-x-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-600 last:border-b-0"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                          onClick={() => markAsRead(notification._id)}
+                          title="Mark as read"
+                        >
+                          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
+
+              {unreadNotifications.length > 0 && (
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      // Mark all as read
+                      unreadNotifications.forEach((n) => markAsRead(n._id));
+                    }}
+                    className="w-full text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -173,29 +270,3 @@ export function Navbar({
     </header>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

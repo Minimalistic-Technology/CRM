@@ -54,6 +54,7 @@ export default function Account() {
       }));
       setAccounts(mappedAccounts);
     } catch (err) {
+      console.error("Fetch accounts error:", err);
       setAccounts([]);
       setError("Failed to fetch accounts");
       setTimeout(() => setError(null), 5000);
@@ -123,6 +124,7 @@ export default function Account() {
         setSuccess("Account created successfully!");
       }
       setShowForm(false);
+      await fetchAccounts(); // Refetch to ensure consistency
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       console.error("Error saving account:", err);
@@ -132,10 +134,6 @@ export default function Account() {
         }`
       );
       setTimeout(() => setError(null), 5000);
-      if (err.message.includes("Notification validation failed")) {
-        console.log("Notification failed, fetching updated accounts...");
-        await fetchAccounts();
-      }
     }
   };
 
@@ -198,7 +196,6 @@ export default function Account() {
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
         <div className="mb-6">
-          {/* Mobile view: All Accounts header */}
           <div className="flex items-center justify-between md:hidden mb-3">
             <span className="font-medium text-lg text-blue-900 dark:text-white">
               All Accounts
@@ -208,7 +205,6 @@ export default function Account() {
             </span>
           </div>
 
-          {/* Mobile view: Buttons */}
           <div className="flex flex-row justify-between md:hidden mb-3 max-[375px]:flex-col max-[375px]:items-center max-[375px]:space-y-2">
             <button
               onClick={() => setShowForm(true)}
@@ -233,7 +229,6 @@ export default function Account() {
                   className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10"
                   onMouseLeave={() => setShowActions(false)}
                 >
-
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -248,7 +243,6 @@ export default function Account() {
             </div>
           </div>
 
-          {/* Larger screens: All Accounts and Buttons */}
           <div className="hidden md:flex justify-between items-center">
             <button className="inline-flex items-center px-4 py-2 bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-white rounded-full font-medium">
               All Accounts
@@ -273,7 +267,6 @@ export default function Account() {
                     className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10"
                     onMouseLeave={() => setShowActions(false)}
                   >
-                  
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -289,7 +282,6 @@ export default function Account() {
               <button
                 onClick={() => setShowForm(true)}
                 className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
-               
               >
                 <Plus className="mr-2" size={16} />
                 Add New Account
@@ -298,7 +290,6 @@ export default function Account() {
           </div>
         </div>
 
-        {/* Table for larger screens */}
         <div className="hidden md:block overflow-x-auto rounded-xl border dark:border-gray-700 border-gray-200">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 text-sm">
             <thead className="bg-blue-50 dark:bg-gray-700 text-blue-900 dark:text-white">
@@ -394,7 +385,6 @@ export default function Account() {
           </table>
         </div>
 
-        {/* List for mobile */}
         <div className="md:hidden space-y-3">
           {accounts.length === 0 ? (
             <div className="text-center text-slate-500 dark:text-slate-400 py-4">
