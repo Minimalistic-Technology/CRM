@@ -1,62 +1,86 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sliders, Plus } from "lucide-react";
+import axios from "axios";
 
 interface MeetingItem {
-  id: number;
+  _id: string;
   name: string;
   venue: string;
   from: string;
   to: string;
 }
+type MeetingFormData = Omit<MeetingItem, "_id">;
 
 const Meeting: React.FC = () => {
-  const [meetings, setMeetings] = useState<MeetingItem[]>([
-    {
-      id: 1,
-      name: "Product Strategy Meet",
-      venue: "Conference Room A",
-      from: "2025-07-01T10:00",
-      to: "2025-07-01T12:00",
-    },
-  ]);
-
+  const [meetings, setMeetings] = useState<MeetingItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showActions, setShowActions] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<MeetingItem>({
-    id: 0,
-    name: "",
-    venue: "",
-    from: "",
-    to: "",
-  });
+  const [formData, setFormData] = useState<MeetingFormData>({
+  name: "",
+  venue: "",
+  from: "",
+  to: "",
+});
+
+  // ✅ Fetch meetings from API
+  const fetchMeetings = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/meetings");
+      setMeetings(res.data);
+    } catch (err) {
+      console.error("Failed to fetch meetings:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMeetings();
+  }, []);
+
+  // ✅ Create a new meeting
+  const handleSubmit = async () => {
+    try {
+      const res = await axios.post("http://localhost:5000/api/meetings", formData);
+      setMeetings((prev) => [...prev, res.data]);
+      alert("Meeting added successfully!");
+      setFormData({ name: "", venue: "", from: "", to: "" });
+      setShowForm(false);
+    } catch (err) {
+      alert("Error adding meeting");
+      console.error(err);
+    }
+  };
+
+  // ✅ Delete one meeting
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/meetings/${selectedId}`);
+      setMeetings((prev) => prev.filter((m) => m._id !== selectedId));
+      setSelectedId(null);
+      setShowActions(false);
+    } catch (err) {
+      console.error("Failed to delete:", err);
+    }
+  };
+
+  // ❌ You don't have a `DELETE ALL` endpoint in backend, so using loop
+  const handleDeleteAll = async () => {
+    try {
+      await Promise.all(
+        meetings.map((m) => axios.delete(`http://localhost:5000/api/meetings/${m._id}`))
+      );
+      setMeetings([]);
+      setSelectedId(null);
+      setShowActions(false);
+    } catch (err) {
+      console.error("Failed to delete all:", err);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = () => {
-    if (formData.name && formData.venue && formData.from && formData.to) {
-      setMeetings([...meetings, { ...formData, id: Date.now() }]);
-      alert("Meeting added successfully!");
-      setFormData({ id: 0, name: "", venue: "", from: "", to: "" });
-      setShowForm(false);
-    }
-  };
-
-  const handleDelete = () => {
-    if (selectedId !== null) {
-      setMeetings(meetings.filter((meeting) => meeting.id !== selectedId));
-      setSelectedId(null);
-    }
-    setShowActions(false);
-  };
-
-  const handleDeleteAll = () => {
-    setMeetings([]);
-    setSelectedId(null);
-    setShowActions(false);
   };
 
   return (
@@ -163,12 +187,12 @@ const Meeting: React.FC = () => {
                 </tr>
               ) : (
                 meetings.map((meeting) => {
-                  const isSelected = meeting.id === selectedId;
+                  const isSelected = meeting._id === selectedId;
                   return (
                     <tr
-                      key={meeting.id}
+                      key={meeting._id}
                       onClick={() =>
-                        setSelectedId(isSelected ? null : meeting.id)
+                        setSelectedId(isSelected ? null : meeting._id)
                       }
                       className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 ${
                         isSelected
@@ -198,18 +222,73 @@ const Meeting: React.FC = () => {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-              Add New Meeting
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* All inputs */}
-              {/* Same as yours with no changes needed */}
-            </div>
-          </div>
+  <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
+      <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
+        Add New Meeting
+      </h3>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        className="grid grid-cols-1 gap-4"
+      >
+        <input
+          type="text"
+          name="name"
+          placeholder="Meeting Name"
+          value={formData.name}
+          onChange={handleChange}
+          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+          required
+        />
+        <input
+          type="text"
+          name="venue"
+          placeholder="Venue"
+          value={formData.venue}
+          onChange={handleChange}
+          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+          required
+        />
+        <input
+          type="datetime-local"
+          name="from"
+          value={formData.from}
+          onChange={handleChange}
+          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+          required
+        />
+        <input
+          type="datetime-local"
+          name="to"
+          value={formData.to}
+          onChange={handleChange}
+          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+          required
+        />
+
+        <div className="flex justify-between mt-4">
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
+          >
+            Save Meeting
+          </button>
         </div>
-      )}
+      </form>
+    </div>
+  </div>
+)}
+
 
       {showActions && (
         <div

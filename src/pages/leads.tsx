@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Sliders } from "lucide-react";
+import axios from "axios";
 
 interface LeadItem {
-  id: number;
+  _id: string;
   leadOwner: string;
   firstName: string;
   lastName: string;
@@ -12,57 +13,70 @@ interface LeadItem {
 }
 
 const Leads: React.FC = () => {
-  const [leads, setLeads] = useState<LeadItem[]>([
-    {
-      id: 1,
-      leadOwner: "Tech Startup",
-      firstName: "Rahul",
-      lastName: "Sharma",
-      phone: "+91 98765 43210",
-    },
-  ]);
-
+  const [leads, setLeads] = useState<LeadItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showActions, setShowActions] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Omit<LeadItem, "id">>({
+  const [formData, setFormData] = useState<Omit<LeadItem, "_id">>({
     leadOwner: "",
     firstName: "",
     lastName: "",
     phone: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const fetchLeads = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/leads");
+      setLeads(res.data);
+    } catch (err) {
+      console.error("Failed to fetch leads", err);
+    }
   };
 
-  const handleSubmit = () => {
-    if (
-      formData.leadOwner &&
-      formData.firstName &&
-      formData.lastName &&
-      formData.phone
-    ) {
-      const newLead = { ...formData, id: Date.now() };
-      setLeads([...leads, newLead]);
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+
+  const handleSubmit = async () => {
+    try {
+      const res = await axios.post("http://localhost:5000/api/leads", formData);
+      setLeads((prev) => [...prev, res.data]);
       setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
       setShowForm(false);
+    } catch (err) {
+      console.error("Error creating lead", err);
     }
   };
 
-  const handleDelete = () => {
-    if (selectedId !== null) {
-      setLeads(leads.filter((lead) => lead.id !== selectedId));
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/leads/${selectedId}`);
+      setLeads((prev) => prev.filter((lead) => lead._id !== selectedId));
       setSelectedId(null);
+      setShowActions(false);
+    } catch (err) {
+      console.error("Failed to delete lead", err);
     }
-    setShowActions(false);
   };
 
-  const handleDeleteAll = () => {
-    setLeads([]);
-    setSelectedId(null);
-    setShowActions(false);
+  const handleDeleteAll = async () => {
+    try {
+      await Promise.all(
+        leads.map((lead) => axios.delete(`http://localhost:5000/api/leads/${lead._id}`))
+      );
+      setLeads([]);
+      setSelectedId(null);
+      setShowActions(false);
+    } catch (err) {
+      console.error("Failed to delete all leads", err);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
@@ -165,11 +179,11 @@ const Leads: React.FC = () => {
                 </tr>
               ) : (
                 leads.map((lead) => {
-                  const isSelected = lead.id === selectedId;
+                  const isSelected = lead._id === selectedId;
                   return (
                     <tr
-                      key={lead.id}
-                      onClick={() => setSelectedId(isSelected ? null : lead.id)}
+                      key={lead._id}
+                      onClick={() => setSelectedId(isSelected ? null : lead._id)}
                       className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 ${
                         isSelected
                           ? "bg-emerald-50 dark:bg-emerald-900"
