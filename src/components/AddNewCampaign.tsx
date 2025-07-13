@@ -50,7 +50,7 @@ export default function AddNewCampaign({
             name="name"
             value={form.name}
             onChange={onChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             placeholder="Enter campaign name"
           />
         </div>
@@ -65,7 +65,7 @@ export default function AddNewCampaign({
               name="type"
               value={form.type}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             >
               <option value="Email">Email</option>
               <option value="Advertisement">Advertisement</option>
@@ -82,7 +82,7 @@ export default function AddNewCampaign({
               name="status"
               value={form.status}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             >
               <option value="Planned">Planned</option>
               <option value="Active">Active</option>
@@ -101,7 +101,7 @@ export default function AddNewCampaign({
               name="budget"
               value={form.budget}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
               placeholder="$0"
             />
           </div>
@@ -115,12 +115,12 @@ export default function AddNewCampaign({
               name="expectedRevenue"
               value={form.expectedRevenue}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
               placeholder="$0"
             />
           </div>
         </div>
-       
+
         <div className=" gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -131,7 +131,7 @@ export default function AddNewCampaign({
               name="actualRevenue"
               value={form.actualRevenue}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
               placeholder="$0"
             />
           </div>
@@ -148,7 +148,7 @@ export default function AddNewCampaign({
               name="startDate"
               value={form.startDate}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             />
           </div>
 
@@ -161,7 +161,7 @@ export default function AddNewCampaign({
               name="endDate"
               value={form.endDate}
               onChange={onChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             />
           </div>
         </div>

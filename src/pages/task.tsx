@@ -1,9 +1,12 @@
+
+
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Plus, CalendarDays } from "lucide-react";
 import AddNewTask from "../components/AddNewTask";
 
 interface Task {
-  id: number;
+  _id?: string;
+  id?: number;
   owner: string;
   subject: string;
   status: "To Do" | "In Progress" | "Completed";
@@ -11,44 +14,86 @@ interface Task {
   priority: "Low" | "Medium" | "High";
 }
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 1,
-    owner: "Alice",
-    subject: "User Onboarding",
-    status: "To Do",
-    due: "2027-01-08",
-    priority: "High",
-  },
-  {
-    id: 2,
-    owner: "Bob",
-    subject: "Dribbble Prioritisation",
-    status: "To Do",
-    due: "2027-01-08",
-    priority: "Medium",
-  },
-  {
-    id: 3,
-    owner: "Carol",
-    subject: "WIP Dashboard",
-    status: "In Progress",
-    due: "2025-01-08",
-    priority: "Low",
-  },
-];
-
 const TABS = ["All Tasks", "To Do", "In Progress", "Completed"] as const;
 const STATUSES = ["To Do", "In Progress", "Completed"] as const;
 
+// API functions
+const API_BASE_URL = "http://localhost:5000/api/tasks";
+
+const taskApi = {
+  // Get all tasks
+  getTasks: async (): Promise<Task[]> => {
+    const response = await fetch(API_BASE_URL);
+    if (!response.ok) throw new Error("Failed to fetch tasks");
+    const tasks = await response.json();
+    return tasks.map((task: any) => ({
+      ...task,
+      id: task._id, // Map MongoDB _id to id for UI compatibility
+      due: new Date(task.due).toISOString().split("T")[0], // Format date for input
+      status: task.status === "Pending" ? "To Do" : task.status, // Transform Pending to To Do
+    }));
+  },
+
+  // Create new task
+  createTask: async (task: Omit<Task, "id" | "_id">): Promise<Task> => {
+    const response = await fetch(API_BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...task,
+        due: new Date(task.due).toISOString(),
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to create task");
+    const newTask = await response.json();
+    return {
+      ...newTask,
+      id: newTask._id,
+      due: new Date(newTask.due).toISOString().split("T")[0],
+    };
+  },
+
+  // Update task
+  updateTask: async (
+    id: string,
+    task: Omit<Task, "id" | "_id">
+  ): Promise<Task> => {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...task,
+        due: new Date(task.due).toISOString(),
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to update task");
+    const updatedTask = await response.json();
+    return {
+      ...updatedTask,
+      id: updatedTask._id,
+      due: new Date(updatedTask.due).toISOString().split("T")[0],
+    };
+  },
+
+  // Delete task
+  deleteTask: async (id: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete task");
+  },
+};
+
 export default function Task() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] =
     useState<(typeof TABS)[number]>("All Tasks");
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedCard, setSelectedCard] = useState<number | null>(null);
-  const [form, setForm] = useState<Omit<Task, "id">>({
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [form, setForm] = useState<Omit<Task, "id" | "_id">>({
     owner: "",
     subject: "",
     status: "To Do",
@@ -57,6 +102,25 @@ export default function Task() {
   });
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const [showActions, setShowActions] = useState<boolean>(false);
+
+  // Load tasks on component mount
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedTasks = await taskApi.getTasks();
+      setTasks(fetchedTasks);
+    } catch (err) {
+      setError("Failed to load tasks");
+      console.error("Error loading tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -72,10 +136,11 @@ export default function Task() {
   }, []);
 
   const counts = TABS.reduce((acc, tab) => {
-    acc[tab] =
-      tab === "All Tasks"
-        ? tasks.length
-        : tasks.filter((t) => t.status === tab).length;
+    if (tab === "All Tasks") {
+      acc[tab] = tasks.length;
+    } else {
+      acc[tab] = tasks.filter((t) => t.status === tab).length;
+    }
     return acc;
   }, {} as Record<string, number>);
 
@@ -99,7 +164,8 @@ export default function Task() {
   }
 
   function handleEditClick(task: Task) {
-    setEditingId(task.id);
+    const taskId = task._id || task.id?.toString();
+    setEditingId(taskId || null);
     setForm({
       owner: task.owner,
       subject: task.subject,
@@ -110,38 +176,86 @@ export default function Task() {
     setShowForm(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (editingId == null) {
-      setTasks((ts) => [...ts, { id: Date.now(), ...form }]);
-    } else {
-      setTasks((ts) =>
-        ts.map((t) => (t.id === editingId ? { ...t, ...form } : t))
-      );
+    try {
+      if (editingId == null) {
+        // Create new task
+        const newTask = await taskApi.createTask(form);
+        setTasks((ts) => [...ts, newTask]);
+      } else {
+        // Update existing task
+        const updatedTask = await taskApi.updateTask(editingId, form);
+        setTasks((ts) =>
+          ts.map((t) => {
+            const taskId = t._id || t.id?.toString();
+            return taskId === editingId ? updatedTask : t;
+          })
+        );
+      }
+      setShowForm(false);
+    } catch (err) {
+      setError("Failed to save task");
+      console.error("Error saving task:", err);
     }
-    setShowForm(false);
   }
 
-  function handleDeleteModal() {
+  async function handleDeleteModal() {
     if (editingId != null) {
-      setTasks((ts) => ts.filter((t) => t.id !== editingId));
-      setEditingId(null);
-      setSelectedCard(null);
+      try {
+        await taskApi.deleteTask(editingId);
+        setTasks((ts) => {
+          return ts.filter((t) => {
+            const taskId = t._id || t.id?.toString();
+            return taskId !== editingId;
+          });
+        });
+        setEditingId(null);
+        setSelectedCard(null);
+      } catch (err) {
+        setError("Failed to delete task");
+        console.error("Error deleting task:", err);
+      }
     }
     setShowForm(false);
   }
 
-  function handleDeleteSelected() {
+  async function handleDeleteSelected() {
     if (selectedCard != null) {
-      setTasks((ts) => ts.filter((t) => t.id !== selectedCard));
-      setSelectedCard(null);
+      try {
+        await taskApi.deleteTask(selectedCard);
+        setTasks((ts) => {
+          return ts.filter((t) => {
+            const taskId = t._id || t.id?.toString();
+            return taskId !== selectedCard;
+          });
+        });
+        setSelectedCard(null);
+      } catch (err) {
+        setError("Failed to delete task");
+        console.error("Error deleting task:", err);
+      }
     }
     setShowActions(false);
   }
 
-  function handleClearAll() {
-    setTasks([]);
-    setSelectedCard(null);
+  async function handleClearAll() {
+    try {
+      // Delete all tasks one by one
+      await Promise.all(
+        tasks.map(async (task) => {
+          const taskId = task._id || task.id?.toString();
+          if (taskId) {
+            await taskApi.deleteTask(taskId);
+          }
+        })
+      );
+      setTasks([]);
+      setSelectedCard(null);
+    } catch (err) {
+      setError("Failed to clear all tasks");
+      console.error("Error clearing tasks:", err);
+    }
     setShowActions(false);
   }
 
@@ -150,8 +264,28 @@ export default function Task() {
     setShowActions(false);
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-blue-900 dark:text-white">Loading tasks...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Top Bar: Title + Buttons */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-blue-900 dark:text-white">
@@ -262,11 +396,12 @@ export default function Task() {
                       t.status === col
                   )
                   .map((t) => {
-                    const isSelected = selectedCard === t.id;
+                    const taskId = t._id || t.id?.toString();
+                    const isSelected = selectedCard === taskId;
                     return (
                       <div
-                        key={t.id}
-                        onClick={() => setSelectedCard(t.id)}
+                        key={taskId}
+                        onClick={() => setSelectedCard(taskId || null)}
                         className={`cursor-pointer rounded-lg shadow p-4 border transition duration-200 ${
                           isSelected
                             ? "bg-emerald-50 dark:bg-emerald-900 border-emerald-300 dark:border-emerald-600"

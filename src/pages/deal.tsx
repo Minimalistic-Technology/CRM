@@ -27,7 +27,7 @@ const STAGES: Stage[] = [
   "Closed Lost",
 ];
 
-export default function DealPage() {
+export default function deal() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [selectedTab, setSelectedTab] =
     useState<(typeof TABS)[number]>("All Deals");

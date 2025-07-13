@@ -36,9 +36,8 @@ export function Navbar({
   const [error, setError] = useState<string | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
- 
-
-  const currentUserId = 2;
+  // very IMP : The User ID  is critical because notifications are tied to a specific userId (e.g., "manan")
+  const currentUserId = "manan";
 
   useEffect(() => {
     setMounted(true);
@@ -51,7 +50,7 @@ export function Navbar({
   useEffect(() => {
     fetchNotifications();
     // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -173,7 +172,6 @@ export function Navbar({
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {unreadNotifications.length}
                 </span>
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping" />
               </>
             )}
           </button>
@@ -218,7 +216,9 @@ export function Navbar({
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {new Date(notification.createdAt).toLocaleString()}
+                            {new Date(
+                              notification.createdAt
+                            ).toLocaleDateString()}
                           </p>
                         </div>
                         <button
@@ -270,3 +270,24 @@ export function Navbar({
     </header>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// try
