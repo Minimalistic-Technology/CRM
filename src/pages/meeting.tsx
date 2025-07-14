@@ -41,34 +41,28 @@ const Meeting: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      if (selectedId) {
-        // Update
-        const res = await axios.put(
-          `http://localhost:5000/api/meetings/${selectedId}`,
-          formData
-        );
-        setMeetings((prev) =>
-          prev.map((m) => (m._id === selectedId ? res.data : m))
-        );
-        alert("Meeting updated successfully!");
-      } else {
-        // Create
-        const res = await axios.post(
-          "http://localhost:5000/api/meetings",
-          formData
-        );
-        setMeetings((prev) => [...prev, res.data]);
-        alert("Meeting added successfully!");
-      }
+      // Convert local datetime-local string to full UTC ISO
+      const payload = {
+        ...formData,
+        from: new Date(formData.from).toISOString(), // e.g. "2025-07-13T23:05:00.000Z"
+        to: new Date(formData.to).toISOString(),
+      };
 
+      const res = await axios.post<MeetingItem>(
+        "http://localhost:5000/api/meetings",
+        payload
+      );
+
+      setMeetings((prev) => [...prev, res.data]);
+      alert("Meeting added successfully!");
       setFormData({ name: "", venue: "", from: "", to: "" });
       setShowForm(false);
-      setSelectedId(null);
     } catch (err) {
-      alert("Error saving meeting");
+      alert("Error adding meeting");
       console.error(err);
     }
   };
+
 
   const formatDateForInput = (iso: string) => {
   return new Date(iso).toISOString().slice(0, 16); // Converts to 'YYYY-MM-DDTHH:mm'
@@ -241,10 +235,10 @@ const handleUpdate = (meeting: MeetingItem) => {
                         {meeting.venue}
                       </td>
                       <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
-                        {meeting.from.replace("T", " ")}
+                        {formatIST(meeting.from)}
                       </td>
                       <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
-                        {meeting.to.replace("T", " ")}
+                        {formatIST(meeting.to)}{" "}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex space-x-2">
