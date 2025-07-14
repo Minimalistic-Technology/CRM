@@ -24,7 +24,6 @@ const Meeting: React.FC = () => {
     to: "",
   });
 
-  // Fetch meetings from API
   const fetchMeetings = async () => {
     try {
       const res = await axios.get<MeetingItem[]>(
@@ -40,33 +39,53 @@ const Meeting: React.FC = () => {
     fetchMeetings();
   }, []);
 
-  // Create a new meeting
-  // Create a new meeting
   const handleSubmit = async () => {
     try {
-      // Convert local datetime-local string to full UTC ISO
-      const payload = {
-        ...formData,
-        from: new Date(formData.from).toISOString(), // e.g. "2025-07-13T23:05:00.000Z"
-        to: new Date(formData.to).toISOString(),
-      };
+      if (selectedId) {
+        // Update
+        const res = await axios.put(
+          `http://localhost:5000/api/meetings/${selectedId}`,
+          formData
+        );
+        setMeetings((prev) =>
+          prev.map((m) => (m._id === selectedId ? res.data : m))
+        );
+        alert("Meeting updated successfully!");
+      } else {
+        // Create
+        const res = await axios.post(
+          "http://localhost:5000/api/meetings",
+          formData
+        );
+        setMeetings((prev) => [...prev, res.data]);
+        alert("Meeting added successfully!");
+      }
 
-      const res = await axios.post<MeetingItem>(
-        "http://localhost:5000/api/meetings",
-        payload
-      );
-
-      setMeetings((prev) => [...prev, res.data]);
-      alert("Meeting added successfully!");
       setFormData({ name: "", venue: "", from: "", to: "" });
       setShowForm(false);
+      setSelectedId(null);
     } catch (err) {
-      alert("Error adding meeting");
+      alert("Error saving meeting");
       console.error(err);
     }
   };
 
-  // Delete one meeting
+  const formatDateForInput = (iso: string) => {
+  return new Date(iso).toISOString().slice(0, 16); // Converts to 'YYYY-MM-DDTHH:mm'
+};
+
+const handleUpdate = (meeting: MeetingItem) => {
+  setFormData({
+    name: meeting.name,
+    venue: meeting.venue,
+    from: formatDateForInput(meeting.from),
+    to: formatDateForInput(meeting.to),
+  });
+  setSelectedId(meeting._id);
+  setShowForm(true);
+};
+
+
   const handleDelete = async () => {
     if (!selectedId) return;
     try {
@@ -79,7 +98,6 @@ const Meeting: React.FC = () => {
     }
   };
 
-  // Delete all meetings
   const handleDeleteAll = async () => {
     try {
       await Promise.all(
@@ -195,6 +213,7 @@ const Meeting: React.FC = () => {
                 </th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">From</th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">To</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -213,26 +232,38 @@ const Meeting: React.FC = () => {
                   return (
                     <tr
                       key={meeting._id}
-                      onClick={() =>
-                        setSelectedId(isSelected ? null : meeting._id)
-                      }
-                      className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 ${
-                        isSelected
-                          ? "bg-emerald-50 dark:bg-emerald-900"
-                          : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
+                      className={`border-t border-gray-100 dark:border-gray-700`}
                     >
-                      <td className="px-4 sm:px-6 py-4 text-blue-900 dark:text-white">
+                      <td className="px-4 py-4 text-blue-900 dark:text-white">
                         {meeting.name}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
                         {meeting.venue}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {formatIST(meeting.from)}
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
+                        {meeting.from.replace("T", " ")}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {formatIST(meeting.to)}
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
+                        {meeting.to.replace("T", " ")}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleUpdate(meeting)}
+                            className="px-3 py-1 bg-emerald-500 text-white text-sm rounded hover:bg-emerald-600"
+                          >
+                            Update
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedId(meeting._id);
+                              handleDelete();
+                            }}
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -245,10 +276,11 @@ const Meeting: React.FC = () => {
 
       {showForm && (
         <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md  text-black">
             <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-              Add New Meeting
+              {selectedId ? "Edit Meeting" : "Add New Meeting"}
             </h3>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -262,7 +294,7 @@ const Meeting: React.FC = () => {
                 placeholder="Meeting Name"
                 value={formData.name}
                 onChange={handleChange}
-                className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
                 required
               />
               <input
@@ -271,7 +303,7 @@ const Meeting: React.FC = () => {
                 placeholder="Venue"
                 value={formData.venue}
                 onChange={handleChange}
-                className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
                 required
               />
               <input
@@ -279,7 +311,7 @@ const Meeting: React.FC = () => {
                 name="from"
                 value={formData.from}
                 onChange={handleChange}
-                className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
                 required
               />
               <input
@@ -287,7 +319,7 @@ const Meeting: React.FC = () => {
                 name="to"
                 value={formData.to}
                 onChange={handleChange}
-                className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
                 required
               />
 
