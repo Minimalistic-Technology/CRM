@@ -38,16 +38,34 @@ const Leads: React.FC = () => {
     fetchLeads();
   }, []);
 
-
   const handleSubmit = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/leads", formData);
-      setLeads((prev) => [...prev, res.data]);
+      if (selectedId) {
+        const res = await axios.put(`http://localhost:5000/api/leads/${selectedId}`, formData);
+        setLeads((prev) => prev.map((lead) => (lead._id === selectedId ? res.data : lead)));
+        alert("Lead updated successfully!");
+      } else {
+        const res = await axios.post("http://localhost:5000/api/leads", formData);
+        setLeads((prev) => [...prev, res.data]);
+        alert("Lead added successfully!");
+      }
       setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
       setShowForm(false);
+      setSelectedId(null);
     } catch (err) {
-      console.error("Error creating lead", err);
+      console.error("Error saving lead", err);
     }
+  };
+
+  const handleUpdate = (lead: LeadItem) => {
+    setFormData({
+      leadOwner: lead.leadOwner,
+      firstName: lead.firstName,
+      lastName: lead.lastName,
+      phone: lead.phone,
+    });
+    setSelectedId(lead._id);
+    setShowForm(true);
   };
 
   const handleDelete = async () => {
@@ -145,7 +163,11 @@ const Leads: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setShowForm(true);
+                setSelectedId(null);
+                setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
+              }}
               className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 w-full sm:w-auto"
             >
               <Plus className="mr-2" size={16} />
@@ -155,56 +177,65 @@ const Leads: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table
-            className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 text-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 text-sm">
             <thead className="bg-blue-50 dark:bg-gray-700 text-blue-900 dark:text-white text-left">
               <tr>
                 <th className="px-4 sm:px-6 py-3 font-semibold">Lead Owner</th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">First Name</th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">Last Name</th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">Phone</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {leads.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-6 py-4 text-center text-slate-500 dark:text-slate-400"
                   >
                     No leads available.
                   </td>
                 </tr>
               ) : (
-                leads.map((lead) => {
-                  const isSelected = lead._id === selectedId;
-                  return (
-                    <tr
-                      key={lead._id}
-                      onClick={() => setSelectedId(isSelected ? null : lead._id)}
-                      className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 ${
-                        isSelected
-                          ? "bg-emerald-50 dark:bg-emerald-900"
-                          : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                    >
-                      <td className="px-4 sm:px-6 py-4 text-blue-900 dark:text-white">
-                        {lead.leadOwner}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {lead.firstName}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {lead.lastName}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {lead.phone}
-                      </td>
-                    </tr>
-                  );
-                })
+                leads.map((lead) => (
+                  <tr
+                    key={lead._id}
+                    className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <td className="px-4 sm:px-6 py-4 text-blue-900 dark:text-white">
+                      {lead.leadOwner}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      {lead.firstName}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      {lead.lastName}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      {lead.phone}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleUpdate(lead)}
+                          className="px-3 py-1 bg-emerald-500 text-white text-sm rounded hover:bg-emerald-600"
+                        >
+                          Update
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedId(lead._id);
+                            handleDelete();
+                          }}
+                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -215,7 +246,7 @@ const Leads: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-gray-800 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
             <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-              Add Lead
+              {selectedId ? "Edit Lead" : "Add Lead"}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
@@ -251,7 +282,10 @@ const Leads: React.FC = () => {
                 className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2 rounded sm:col-span-2"
               />
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setSelectedId(null);
+                }}
                 className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 rounded"
               >
                 Cancel
@@ -260,7 +294,7 @@ const Leads: React.FC = () => {
                 onClick={handleSubmit}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded"
               >
-                Submit
+                {selectedId ? "Update" : "Submit"}
               </button>
             </div>
           </div>

@@ -18,13 +18,12 @@ const Meeting: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<MeetingFormData>({
-  name: "",
-  venue: "",
-  from: "",
-  to: "",
-});
+    name: "",
+    venue: "",
+    from: "",
+    to: "",
+  });
 
-  // ✅ Fetch meetings from API
   const fetchMeetings = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/meetings");
@@ -38,21 +37,53 @@ const Meeting: React.FC = () => {
     fetchMeetings();
   }, []);
 
-  // ✅ Create a new meeting
   const handleSubmit = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/meetings", formData);
-      setMeetings((prev) => [...prev, res.data]);
-      alert("Meeting added successfully!");
+      if (selectedId) {
+        // Update
+        const res = await axios.put(
+          `http://localhost:5000/api/meetings/${selectedId}`,
+          formData
+        );
+        setMeetings((prev) =>
+          prev.map((m) => (m._id === selectedId ? res.data : m))
+        );
+        alert("Meeting updated successfully!");
+      } else {
+        // Create
+        const res = await axios.post(
+          "http://localhost:5000/api/meetings",
+          formData
+        );
+        setMeetings((prev) => [...prev, res.data]);
+        alert("Meeting added successfully!");
+      }
+
       setFormData({ name: "", venue: "", from: "", to: "" });
       setShowForm(false);
+      setSelectedId(null);
     } catch (err) {
-      alert("Error adding meeting");
+      alert("Error saving meeting");
       console.error(err);
     }
   };
 
-  // ✅ Delete one meeting
+  const formatDateForInput = (iso: string) => {
+  return new Date(iso).toISOString().slice(0, 16); // Converts to 'YYYY-MM-DDTHH:mm'
+};
+
+const handleUpdate = (meeting: MeetingItem) => {
+  setFormData({
+    name: meeting.name,
+    venue: meeting.venue,
+    from: formatDateForInput(meeting.from),
+    to: formatDateForInput(meeting.to),
+  });
+  setSelectedId(meeting._id);
+  setShowForm(true);
+};
+
+
   const handleDelete = async () => {
     if (!selectedId) return;
     try {
@@ -65,11 +96,12 @@ const Meeting: React.FC = () => {
     }
   };
 
-  // ❌ You don't have a `DELETE ALL` endpoint in backend, so using loop
   const handleDeleteAll = async () => {
     try {
       await Promise.all(
-        meetings.map((m) => axios.delete(`http://localhost:5000/api/meetings/${m._id}`))
+        meetings.map((m) =>
+          axios.delete(`http://localhost:5000/api/meetings/${m._id}`)
+        )
       );
       setMeetings([]);
       setSelectedId(null);
@@ -173,6 +205,7 @@ const Meeting: React.FC = () => {
                 </th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">From</th>
                 <th className="px-4 sm:px-6 py-3 font-semibold">To</th>
+                <th className="px-4 sm:px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -191,26 +224,38 @@ const Meeting: React.FC = () => {
                   return (
                     <tr
                       key={meeting._id}
-                      onClick={() =>
-                        setSelectedId(isSelected ? null : meeting._id)
-                      }
-                      className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 ${
-                        isSelected
-                          ? "bg-emerald-50 dark:bg-emerald-900"
-                          : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
+                      className={`border-t border-gray-100 dark:border-gray-700`}
                     >
-                      <td className="px-4 sm:px-6 py-4 text-blue-900 dark:text-white">
+                      <td className="px-4 py-4 text-blue-900 dark:text-white">
                         {meeting.name}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
                         {meeting.venue}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
                         {meeting.from.replace("T", " ")}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-4 text-slate-700 dark:text-slate-300">
                         {meeting.to.replace("T", " ")}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleUpdate(meeting)}
+                            className="px-3 py-1 bg-emerald-500 text-white text-sm rounded hover:bg-emerald-600"
+                          >
+                            Update
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedId(meeting._id);
+                              handleDelete();
+                            }}
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -222,73 +267,73 @@ const Meeting: React.FC = () => {
       </div>
 
       {showForm && (
-  <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
-    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
-      <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-        Add New Meeting
-      </h3>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit();
-        }}
-        className="grid grid-cols-1 gap-4"
-      >
-        <input
-          type="text"
-          name="name"
-          placeholder="Meeting Name"
-          value={formData.name}
-          onChange={handleChange}
-          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
-          required
-        />
-        <input
-          type="text"
-          name="venue"
-          placeholder="Venue"
-          value={formData.venue}
-          onChange={handleChange}
-          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
-          required
-        />
-        <input
-          type="datetime-local"
-          name="from"
-          value={formData.from}
-          onChange={handleChange}
-          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
-          required
-        />
-        <input
-          type="datetime-local"
-          name="to"
-          value={formData.to}
-          onChange={handleChange}
-          className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
-          required
-        />
+        <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md  text-black">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
+              {selectedId ? "Edit Meeting" : "Add New Meeting"}
+            </h3>
 
-        <div className="flex justify-between mt-4">
-          <button
-            type="button"
-            onClick={() => setShowForm(false)}
-            className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
-          >
-            Save Meeting
-          </button>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit();
+              }}
+              className="grid grid-cols-1 gap-4"
+            >
+              <input
+                type="text"
+                name="name"
+                placeholder="Meeting Name"
+                value={formData.name}
+                onChange={handleChange}
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+                required
+              />
+              <input
+                type="text"
+                name="venue"
+                placeholder="Venue"
+                value={formData.venue}
+                onChange={handleChange}
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+                required
+              />
+              <input
+                type="datetime-local"
+                name="from"
+                value={formData.from}
+                onChange={handleChange}
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+                required
+              />
+              <input
+                type="datetime-local"
+                name="to"
+                value={formData.to}
+                onChange={handleChange}
+                className="p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
+                required
+              />
+
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
+                >
+                  Save Meeting
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
-
+      )}
 
       {showActions && (
         <div
