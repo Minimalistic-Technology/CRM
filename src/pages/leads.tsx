@@ -1,8 +1,6 @@
 "use client";
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Plus, Sliders } from "lucide-react";
-import axios from "axios";
 
 interface LeadItem {
   _id: string;
@@ -17,6 +15,9 @@ const Leads: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<Omit<LeadItem, "_id">>({
     leadOwner: "",
@@ -25,76 +26,161 @@ const Leads: React.FC = () => {
     phone: "",
   });
 
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (
+        actionsRef.current &&
+        !actionsRef.current.contains(e.target as Node)
+      ) {
+        setShowActions(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   const fetchLeads = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/leads");
-      setLeads(res.data);
+      const res = await fetch("http://localhost:5000/api/crm/leads");
+      if (!res.ok) throw new Error("Failed to fetch leads");
+      const data = await res.json();
+      setLeads(data);
     } catch (err) {
       console.error("Failed to fetch leads", err);
     }
   };
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  const handleSubmit = async () => {
-    try {
-      if (selectedId) {
-        const res = await axios.put(`http://localhost:5000/api/leads/${selectedId}`, formData);
-        setLeads((prev) => prev.map((lead) => (lead._id === selectedId ? res.data : lead)));
-        alert("Lead updated successfully!");
-      } else {
-        const res = await axios.post("http://localhost:5000/api/leads", formData);
-        setLeads((prev) => [...prev, res.data]);
-        alert("Lead added successfully!");
-      }
-      setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
-      setShowForm(false);
-      setSelectedId(null);
-    } catch (err) {
-      console.error("Error saving lead", err);
-    }
+  const validateForm = () => {
+    if (!formData.leadOwner.trim()) return "Lead Owner is required";
+    if (!formData.firstName.trim()) return "First Name is required";
+    if (!formData.lastName.trim()) return "Last Name is required";
+    if (!formData.phone.trim()) return "Phone is required";
+    return null;
   };
 
-  const handleUpdate = (lead: LeadItem) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      setFormError(error);
+      return;
+    }
+    setFormError(null);
+
+    const basePayload = { ...formData };
+    const payload =
+      editingId == null ? { ...basePayload, owner: "global" } : basePayload;
+
+    try {
+      let res;
+      if (editingId == null) {
+        res = await fetch("http://localhost:5000/api/crm/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch(`http://localhost:5000/api/crm/leads/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error(
+          "Error saving lead:",
+          errorData?.error || "Unknown error"
+        );
+      } else {
+        // const saved = await res.json();
+      }
+
+      if (editingId == null) {
+        try {
+          await fetch("http://localhost:5000/api/crm/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: "global",
+              message: `Lead "${formData.firstName} ${formData.lastName}" created.`,
+              type: "lead",
+            }),
+          });
+        } catch (notificationErr) {
+          console.error("Failed to create notification:", notificationErr);
+        }
+      }
+    } catch (err) {
+      console.error("Error saving lead:", err);
+    } finally {
+      await fetchLeads();
+    }
+
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
+  };
+
+  const openAddForm = () => {
+    setEditingId(null);
+    setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
+    setShowForm(true);
+    setFormError(null);
+  };
+
+  const openEditForm = (lead: LeadItem) => {
+    setEditingId(lead._id);
     setFormData({
       leadOwner: lead.leadOwner,
       firstName: lead.firstName,
       lastName: lead.lastName,
       phone: lead.phone,
     });
-    setSelectedId(lead._id);
     setShowForm(true);
+    setFormError(null);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteSelected = async () => {
     if (!selectedId) return;
+
     try {
-      await axios.delete(`http://localhost:5000/api/leads/${selectedId}`);
-      setLeads((prev) => prev.filter((lead) => lead._id !== selectedId));
-      setSelectedId(null);
-      setShowActions(false);
+      const res = await fetch(`http://localhost:5000/api/crm/leads/${selectedId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Error deleting lead:", errorData?.error || "Unknown error");
+      }
     } catch (err) {
-      console.error("Failed to delete lead", err);
+      console.error("Error deleting lead:", err);
+    } finally {
+      await fetchLeads();
     }
+
+    setShowActions(false);
   };
 
-  const handleDeleteAll = async () => {
-    try {
-      await Promise.all(
-        leads.map((lead) => axios.delete(`http://localhost:5000/api/leads/${lead._id}`))
-      );
-      setLeads([]);
-      setSelectedId(null);
-      setShowActions(false);
-    } catch (err) {
-      console.error("Failed to delete all leads", err);
-    }
+  const handleClearAll = () => {
+    setLeads([]);
+    setSelectedId(null);
+    setShowActions(false);
+  };
+
+  const handleDeselect = () => {
+    setSelectedId(null);
+    setShowActions(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormError(null);
   };
 
   return (
@@ -115,7 +201,7 @@ const Leads: React.FC = () => {
           </button>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto" ref={actionsRef}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -131,7 +217,7 @@ const Leads: React.FC = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete();
+                      if (selectedId) handleDeleteSelected();
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900"
                     disabled={selectedId == null}
@@ -141,7 +227,7 @@ const Leads: React.FC = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteAll();
+                      handleClearAll();
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900"
                   >
@@ -150,8 +236,7 @@ const Leads: React.FC = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedId(null);
-                      setShowActions(false);
+                      handleDeselect();
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-blue-900 dark:text-white hover:bg-blue-50 dark:hover:bg-gray-700"
                     disabled={selectedId == null}
@@ -163,11 +248,7 @@ const Leads: React.FC = () => {
             </div>
 
             <button
-              onClick={() => {
-                setShowForm(true);
-                setSelectedId(null);
-                setFormData({ leadOwner: "", firstName: "", lastName: "", phone: "" });
-              }}
+              onClick={openAddForm}
               className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 w-full sm:w-auto"
             >
               <Plus className="mr-2" size={16} />
@@ -218,7 +299,7 @@ const Leads: React.FC = () => {
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleUpdate(lead)}
+                          onClick={() => openEditForm(lead)}
                           className="px-3 py-1 bg-emerald-500 text-white text-sm rounded hover:bg-emerald-600"
                         >
                           Update
@@ -226,7 +307,7 @@ const Leads: React.FC = () => {
                         <button
                           onClick={() => {
                             setSelectedId(lead._id);
-                            handleDelete();
+                            handleDeleteSelected();
                           }}
                           className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
                         >
@@ -246,8 +327,13 @@ const Leads: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-gray-800 bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
             <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-              {selectedId ? "Edit Lead" : "Add Lead"}
+              {editingId ? "Edit Lead" : "Add Lead"}
             </h3>
+            {formError && (
+              <p className="text-sm text-red-500 dark:text-red-400 mb-4">
+                {formError}
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
                 type="text"
@@ -284,7 +370,8 @@ const Leads: React.FC = () => {
               <button
                 onClick={() => {
                   setShowForm(false);
-                  setSelectedId(null);
+                  setEditingId(null);
+                  setFormError(null);
                 }}
                 className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 rounded"
               >
@@ -294,7 +381,7 @@ const Leads: React.FC = () => {
                 onClick={handleSubmit}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded"
               >
-                {selectedId ? "Update" : "Submit"}
+                {editingId ? "Update" : "Submit"}
               </button>
             </div>
           </div>
@@ -305,60 +392,3 @@ const Leads: React.FC = () => {
 };
 
 export default Leads;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

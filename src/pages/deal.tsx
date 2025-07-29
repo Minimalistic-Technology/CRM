@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Plus, Calendar } from "lucide-react";
 import AddNewDeal from "../components/AddNewDeal";
@@ -27,7 +28,7 @@ const STAGES: Stage[] = [
   "Closed Lost",
 ];
 
-export default function deal() {
+export default function Deal() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [selectedTab, setSelectedTab] =
     useState<(typeof TABS)[number]>("All Deals");
@@ -48,7 +49,7 @@ export default function deal() {
   useEffect(() => {
     async function fetchDeals() {
       try {
-        const res = await fetch("http://localhost:5000/api/deals");
+        const res = await fetch("http://localhost:5000/api/crm/deals");
         const data = await res.json();
         setDeals(data);
       } catch (err) {
@@ -107,24 +108,23 @@ export default function deal() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    const payload = {
+    const basePayload = {
       ...form,
       dealValue: parseFloat(form.dealValue),
       closeDate: new Date(form.closeDate).toISOString(),
-      owner: "test-user-id",
     };
-
+    const payload =
+      editingId == null ? { ...basePayload, owner: "global" } : basePayload;
     try {
       let res;
       if (editingId == null) {
-        res = await fetch("http://localhost:5000/api/deals", {
+        res = await fetch("http://localhost:5000/api/crm/deals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`http://localhost:5000/api/deals/${editingId}`, {
+        res = await fetch(`http://localhost:5000/api/crm/deals/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -135,7 +135,7 @@ export default function deal() {
         const errorData = await res.json();
         throw new Error(errorData?.error || "Failed to save deal");
       }
-      const saved = await res.json(); 
+      const saved = await res.json();
 
       setDeals((prev) =>
         editingId == null
@@ -155,7 +155,7 @@ export default function deal() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/deals/${selectedCard}`,
+        `http://localhost:5000/api/crm/deals/${selectedCard}`,
         {
           method: "DELETE",
         }

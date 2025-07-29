@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Plus, CalendarDays } from "lucide-react";
 import AddNewTask from "../components/AddNewTask";
@@ -18,7 +16,7 @@ const TABS = ["All Tasks", "To Do", "In Progress", "Completed"] as const;
 const STATUSES = ["To Do", "In Progress", "Completed"] as const;
 
 // API functions
-const API_BASE_URL = "http://localhost:5000/api/tasks";
+const API_BASE_URL = "http://localhost:5000/api/crm/tasks";
 
 const taskApi = {
   // Get all tasks

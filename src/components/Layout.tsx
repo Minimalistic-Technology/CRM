@@ -29,12 +29,12 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     const handleResize = () => {
       const newWidth = window.innerWidth;
-      console.log(
-        "Resize detected, new width:",
-        newWidth,
-        "current sidebarOpen:",
-        sidebarOpen
-      );
+      // console.log(
+      //   "Resize detected, new width:",
+      //   newWidth,
+      //   "current sidebarOpen:",
+      //   sidebarOpen
+      // );
       setWidth(newWidth);
 
       /* 

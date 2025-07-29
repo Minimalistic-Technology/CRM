@@ -1,7 +1,4 @@
 
-// responsive  sidebar for mobile view & sm .
-
-
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -14,6 +11,8 @@ import {
   Calendar,
   Building,
   Handshake,
+  UserPlus,
+  CalendarClock,
   ChevronLeft,
 } from "lucide-react";
 
@@ -48,16 +47,6 @@ export function Sidebar({
   const showChevron = mounted && (isMobile || isTablet) && isOpen;
 
   // Debug log to verify props
-  useEffect(() => {
-    console.log(
-      "Sidebar - isOpen:",
-      isOpen,
-      "width:",
-      width,
-      "isTablet:",
-      isTablet
-    );
-  }, [isOpen, width]);
 
   return (
     <>
@@ -98,13 +87,13 @@ export function Sidebar({
         <nav className="flex-1 mt-2 sm:mt-3 md:mt-4">
           <ul>
             {[
-              { label: "Dashboard", icon: Menu, to: "/" },
+              { label: "Dashboard", icon: Menu, to: "/dashboard" },
               { label: "Contacts", icon: Phone, to: "/contact" },
               { label: "Account", icon: Building, to: "/account" },
               { label: "Task", icon: CheckSquare, to: "/task" },
               { label: "Campaign", icon: Megaphone, to: "/campaign" },
-              { label: "Meeting", icon: Calendar, to: "/meeting" },
-              { label: "Leads", icon: Calendar, to: "/leads" },
+              { label: "Meeting", icon: CalendarClock, to: "/meeting" },
+              { label: "Leads", icon: UserPlus, to: "/leads" },
               { label: "Deals", icon: Handshake, to: "/deal" },
             ].map(({ label, icon: Icon, to }) => {
               const active = router.pathname === to;
@@ -136,9 +125,7 @@ export function Sidebar({
           </ul>
         </nav>
 
-        <div className="p-2 sm:p-3 md:p-4 border-t border-emerald-500/30 text-xs sm:text-sm md:text-base text-emerald-100 dark:text-gray-300">
-          Support
-        </div>
+       
       </aside>
     </>
   );

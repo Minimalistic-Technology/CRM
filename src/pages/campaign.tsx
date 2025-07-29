@@ -1,8 +1,9 @@
+"use client"
 import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { Plus, Sliders } from "lucide-react";
-import AddNewcampaign from "../components/AddNewCampaign";
+import AddNewCampaign from "../components/AddNewCampaign";
 
-interface campaignData {
+interface CampaignData {
   id: string;
   name: string;
   type: string;
@@ -14,7 +15,7 @@ interface campaignData {
   endDate: string;
 }
 
-interface campaignForm {
+interface CampaignForm {
   name: string;
   type: string;
   status: string;
@@ -26,7 +27,7 @@ interface campaignForm {
 }
 
 export default function Campaign() {
-  const [campaigns, setcampaigns] = useState<campaignData[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export default function Campaign() {
   const [deleting, setDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const [form, setForm] = useState<campaignForm>({
+  const [form, setForm] = useState<CampaignForm>({
     name: "",
     type: "Email",
     status: "Planned",
@@ -48,13 +49,13 @@ export default function Campaign() {
   });
 
   useEffect(() => {
-    const fetchcampaigns = async () => {
+    const fetchCampaigns = async () => {
       setLoading(true);
       try {
-        const res = await fetch("http://localhost:5000/api/campaigns");
+        const res = await fetch("http://localhost:5000/api/crm/campaigns");
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
-        setcampaigns(
+        setCampaigns(
           data.map((item: any) => ({
             id: item._id,
             name: item.name,
@@ -72,20 +73,22 @@ export default function Campaign() {
           }))
         );
         setError(null);
-      } catch (err: any) {
-        setError(`Error fetching campaigns: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(`Error fetching campaigns: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
-    fetchcampaigns();
+    fetchCampaigns();
   }, []);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    setForm((f: CampaignForm) => ({ ...f, [name]: value }));
   };
 
   const handleSave = async (e: FormEvent) => {
@@ -96,41 +99,66 @@ export default function Campaign() {
       return;
     }
 
-    const payload = {
-      name: form.name,
-      type: form.type,
-      status: form.status,
-      budget: form.budget,
-      expectedRevenue: form.expectedRevenue,
-      actualRevenue: form.actualRevenue || "0",
+    interface Payload extends CampaignForm {
+      createdBy?: string;
+      updatedBy?: string;
+    }
+
+    const payload: Payload = {
+      name: String(form.name),
+      type: String(form.type),
+      status: String(form.status),
+      budget: String(form.budget),
+      expectedRevenue: String(form.expectedRevenue),
+      actualRevenue: String(form.actualRevenue || "0"),
       startDate: new Date(form.startDate).toISOString(),
       endDate: new Date(form.endDate).toISOString(),
-      createdBy: "test-user-id",
-      updatedBy: "test-user-id", // ✅ this goes to update API
     };
-    console.log("Saving campaign:", payload);
+
+    if (isUpdating) {
+      payload.updatedBy = "manan";
+    } else {
+      payload.createdBy = "global";
+    }
+
+    if (!form.startDate || isNaN(Date.parse(form.startDate))) {
+      setError("Start date is invalid");
+      return;
+    }
+    if (!form.endDate || isNaN(Date.parse(form.endDate))) {
+      setError("End date is invalid");
+      return;
+    }
+
     try {
       let res: Response;
 
       if (isUpdating && selectedId) {
-        res = await fetch(`http://localhost:5000/api/campaigns/${selectedId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        res = await fetch(
+          `http://localhost:5000/api/crm/campaigns/${selectedId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
       } else {
-        res = await fetch("http://localhost:5000/api/campaigns", {
+        res = await fetch("http://localhost:5000/api/crm/campaigns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       }
 
-      if (!res.ok) throw new Error(res.statusText);
-      const saved = await res.json();
+      if (!res.ok) {
+        const errorData = await res.json();
+        const errorMessage =
+          errorData.message || errorData.error || "Bad Request";
+        throw new Error(errorMessage);
+      }
 
-      // update local state
-      const entry: campaignData = {
+      const saved = await res.json();
+      const entry: CampaignData = {
         id: saved._id,
         name: saved.name,
         type: saved.type,
@@ -146,7 +174,7 @@ export default function Campaign() {
         endDate: new Date(saved.endDate).toISOString().split("T")[0],
       };
 
-      setcampaigns((prev) =>
+      setCampaigns((prev) =>
         isUpdating
           ? prev.map((c) => (c.id === selectedId ? entry : c))
           : [...prev, entry]
@@ -169,8 +197,9 @@ export default function Campaign() {
       });
 
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(`Error saving campaign: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(`Error saving campaign: ${errorMessage}`);
     }
   };
 
@@ -188,24 +217,26 @@ export default function Campaign() {
       startDate: "",
       endDate: "",
     });
+    setError(null);
   };
 
   const handleDelete = async (id: string) => {
     setDeleting(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/campaigns/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/crm/campaigns/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deletedBy: "test-user-id" }),
+        body: JSON.stringify({ deletedBy: "manan" }),
       });
 
       if (!res.ok) throw new Error(res.statusText);
-      setcampaigns((prev) => prev.filter((c) => c.id !== id));
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
       if (selectedId === id) setSelectedId(null);
       setSuccess("Deleted successfully!");
       setTimeout(() => setSuccess(null), 2000);
-    } catch (err: any) {
-      setError(`Error deleting: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(`Error deleting: ${errorMessage}`);
     } finally {
       setDeleting(false);
     }
@@ -218,31 +249,31 @@ export default function Campaign() {
       name: c.name,
       type: c.type,
       status: c.status,
-      budget: (c.budget || "").replace(/[^0-9.]/g, ""),
-      expectedRevenue: (c.expectedRevenue || "").replace(/[^0-9.]/g, ""),
-      actualRevenue: (c.actualRevenue || "").replace(/[^0-9.]/g, ""),
-      startDate: new Date(c.startDate).toISOString().split("T")[0],
-      endDate: new Date(c.endDate).toISOString().split("T")[0],
+      budget: c.budget.replace("$", "").replace(",", ""),
+      expectedRevenue: c.expectedRevenue.replace("$", "").replace(",", ""),
+      actualRevenue: c.actualRevenue.replace("$", "").replace(",", ""),
+      startDate: c.startDate,
+      endDate: c.endDate,
     });
-
-    console.log("Updating campaign:", c);
     setIsUpdating(true);
     setSelectedId(id);
     setShowForm(true);
   };
+
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
-      const res = await fetch("http://localhost:5000/api/campaigns", {
+      const res = await fetch("http://localhost:5000/api/crm", {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(res.statusText);
-      setcampaigns([]);
+      setCampaigns([]);
       setSelectedId(null);
       setSuccess("All deleted!");
       setTimeout(() => setSuccess(null), 2000);
-    } catch (err: any) {
-      setError(`Error deleting all: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(`Error deleting all: ${errorMessage}`);
     } finally {
       setDeleting(false);
       setShowActions(false);
@@ -251,7 +282,6 @@ export default function Campaign() {
 
   return (
     <div className="relative p-6 bg-emerald-50 dark:bg-gray-900 text-blue-900 dark:text-white min-h-screen overflow-auto">
-      {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold">Campaigns</h1>
         <div className="flex flex-col">
@@ -262,9 +292,7 @@ export default function Campaign() {
         </div>
       </div>
 
-      {/* Card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 sm:p-6">
-        {/* Top Action Row */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
           <button className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 dark:text-white rounded-full font-medium dark:bg-gray-700">
             All campaigns
@@ -274,7 +302,6 @@ export default function Campaign() {
           </button>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            {/* Actions Dropdown */}
             <div className="relative">
               <button
                 className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-blue-900 text-white flex items-center hover:bg-blue-800"
@@ -302,7 +329,6 @@ export default function Campaign() {
               )}
             </div>
 
-            {/* Add Campaign */}
             <button
               className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600"
               onClick={() => {
@@ -317,7 +343,6 @@ export default function Campaign() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
           {loading ? (
             <p className="p-4">Loading campaigns...</p>
@@ -365,11 +390,11 @@ export default function Campaign() {
                         !deleting && setSelectedId(isSel ? null : c.id)
                       }
                       className={`cursor-pointer border-t border-gray-100 dark:border-gray-700 
-                    ${
-                      isSel
-                        ? "bg-emerald-50 dark:bg-emerald-900"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                    } ${deleting ? "opacity-50" : ""}`}
+                        ${
+                          isSel
+                            ? "bg-emerald-50 dark:bg-emerald-900"
+                            : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                        } ${deleting ? "opacity-50" : ""}`}
                     >
                       <td className="px-4 py-3">{c.name}</td>
                       <td className="px-4 py-3">{c.type}</td>
@@ -416,21 +441,22 @@ export default function Campaign() {
         </div>
       </div>
 
-      {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md">
-            <AddNewcampaign
+            <AddNewCampaign
               form={form}
               onChange={handleChange}
               onSubmit={handleSave}
               onCancel={handleCancel}
+              isUpdating={isUpdating}
+              error={error}
+              setError={setError}
             />
           </div>
         </div>
       )}
 
-      {/* Backdrop when actions open */}
       {showActions && (
         <div
           className="fixed inset-0 z-0"

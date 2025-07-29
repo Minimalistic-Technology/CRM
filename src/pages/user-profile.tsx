@@ -1,7 +1,7 @@
-//api integrated code : almost done 
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Facebook,
   X as Twitter,
@@ -10,6 +10,7 @@ import {
   Edit2 as Edit,
   Save,
   X as Cancel,
+  Trash2,
 } from "lucide-react";
 
 interface SocialLinks {
@@ -34,8 +35,8 @@ interface Address {
   taxId: string;
 }
 
-interface User {
-  id?: string;
+interface UserProfile {
+  _id?: string;
   avatarUrl: string;
   fullName: string;
   role: string;
@@ -73,6 +74,7 @@ const Card: React.FC<CardProps> = ({
             <button
               onClick={onSave}
               className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-800 dark:hover:text-blue-300"
+              type="button"
             >
               <Save className="w-4 h-4" />
               Save
@@ -80,6 +82,7 @@ const Card: React.FC<CardProps> = ({
             <button
               onClick={onCancel}
               className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
+              type="button"
             >
               <Cancel className="w-4 h-4" />
               Cancel
@@ -89,6 +92,7 @@ const Card: React.FC<CardProps> = ({
           <button
             onClick={onEdit}
             className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-800 dark:hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity"
+            type="button"
           >
             <Edit className="w-4 h-4" />
             Edit
@@ -100,236 +104,322 @@ const Card: React.FC<CardProps> = ({
   </div>
 );
 
-const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
-  const [user, setUser] = useState<User>({
-    avatarUrl:
-      "https://www.shutterstock.com/image-vector/blank-avatar-photo-place-holder-600nw-1095249842.jpg",
-    fullName: "Vyom Mehta",
-    role: "Team Manager",
-    location: "Maharashtra, India",
-    social: {
-      facebook: "#",
-      twitter: "#",
-      linkedin: "#",
-      instagram: "#",
-    },
-    personal: {
-      firstName: "Vyom",
-      lastName: "Mehta",
-      email: "randomuser@pimjo.com",
-      phone: "+09 363 398 46",
-      bio: "Team Manager",
-    },
-    address: {
-      country: "India",
-      cityState: "Maharashtra, India",
-      postalCode: "ERT 2489",
-      taxId: "AS4568384",
-    },
-  });
-
+const ProfilePage: React.FC = () => {
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editProfile, setEditProfile] = useState({
-    fullName: user.fullName,
-    role: user.role,
-    location: user.location,
-    social: { ...user.social },
+    fullName: "",
+    role: "",
+    location: "",
+    social: { facebook: "", twitter: "", linkedin: "", instagram: "" },
   });
-  const [editPersonal, setEditPersonal] = useState({ ...user.personal });
-  const [editAddress, setEditAddress] = useState({ ...user.address });
+  const [editPersonal, setEditPersonal] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    bio: "",
+  });
+  const [editAddress, setEditAddress] = useState({
+    country: "",
+    cityState: "",
+    postalCode: "",
+    taxId: "",
+  });
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user profile on component mount
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const email = localStorage.getItem("userEmail");
+    if (!email) {
+      router.push("/login");
+      return;
+    }
+
+    const fetchProfile = async () => {
       try {
-        // First try to fetch by specific ID
-        let response = await fetch(
-          `http://localhost:5000/api/user-profiles/${userId}`
+        const response = await fetch(
+          "http://localhost:5000/api/crm/user-profiles",
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
         );
-        let data;
+
+        const profiles = await response.json();
+
         if (!response.ok) {
-          // If specific ID fails, fetch all profiles and use the first one
-          const allResponse = await fetch(
-            "http://localhost:5000/api/user-profiles"
-          );
-          if (!allResponse.ok) throw new Error(await allResponse.text());
-          const allProfiles = await allResponse.json();
-          if (allProfiles.length === 0) throw new Error("No profiles found");
-          data = allProfiles[0];
-        } else {
-          data = await response.json();
+          throw new Error(profiles.error || "Failed to fetch profiles");
         }
-        setUser(data);
-        setEditProfile({
-          fullName: data.fullName,
-          role: data.role,
-          location: data.location,
-          social: { ...data.social },
+
+        const userProfile = profiles.find(
+          (p: UserProfile) => p.personal.email === email
+        );
+
+        if (!userProfile) {
+          throw new Error("Profile not found for this email");
+        }
+
+        const defaultSocial: SocialLinks = {
+          facebook: userProfile.social?.facebook || "",
+          twitter: userProfile.social?.twitter || "",
+          linkedin: userProfile.social?.linkedin || "",
+          instagram: userProfile.social?.instagram || "",
+        };
+
+        const defaultPersonal: PersonalInfo = {
+          firstName: userProfile.personal?.firstName || "",
+          lastName: userProfile.personal?.lastName || "",
+          email: userProfile.personal?.email || "",
+          phone: userProfile.personal?.phone || "",
+          bio: userProfile.personal?.bio || "",
+        };
+
+        const defaultAddress: Address = {
+          country: userProfile.address?.country || "",
+          cityState: userProfile.address?.cityState || "",
+          postalCode: userProfile.address?.postalCode || "",
+          taxId: userProfile.address?.taxId || "",
+        };
+
+        setProfile({
+          ...userProfile,
+          social: defaultSocial,
+          personal: defaultPersonal,
+          address: defaultAddress,
         });
-        setEditPersonal({ ...data.personal });
-        setEditAddress({ ...data.address });
-      } catch (err) {
-        setError(`Failed to fetch user profile: ${err.message}`);
-        console.error(err);
+        setEditProfile({
+          fullName: userProfile.fullName || "",
+          role: userProfile.role || "",
+          location: userProfile.location || "",
+          social: defaultSocial,
+        });
+        setEditPersonal(defaultPersonal);
+        setEditAddress(defaultAddress);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch profile");
+        localStorage.removeItem("userEmail");
+  router.push("/login");
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchUserProfile();
-  }, [userId]);
+
+    fetchProfile();
+  }, [router]);
 
   const handleEditProfile = () => {
     setEditProfile({
-      fullName: user.fullName,
-      role: user.role,
-      location: user.location,
-      social: { ...user.social },
+      fullName: profile?.fullName || "",
+      role: profile?.role || "",
+      location: profile?.location || "",
+      social: profile?.social || {
+        facebook: "",
+        twitter: "",
+        linkedin: "",
+        instagram: "",
+      },
     });
     setIsEditingProfile(true);
   };
 
   const handleEditPersonal = () => {
-    setEditPersonal({ ...user.personal });
+    setEditPersonal({
+      firstName: profile?.personal.firstName || "",
+      lastName: profile?.personal.lastName || "",
+      email: profile?.personal.email || "",
+      phone: profile?.personal.phone || "",
+      bio: profile?.personal.bio || "",
+    });
     setIsEditingPersonal(true);
   };
 
   const handleEditAddress = () => {
-    setEditAddress({ ...user.address });
+    setEditAddress({
+      country: profile?.address.country || "",
+      cityState: profile?.address.cityState || "",
+      postalCode: profile?.address.postalCode || "",
+      taxId: profile?.address.taxId || "",
+    });
     setIsEditingAddress(true);
   };
 
   const handleSaveProfile = async () => {
+    if (!profile?._id) {
+      setError("Profile ID not found");
+      return;
+    }
+
     try {
-      const updatedUser = {
-        ...user,
+      const fullNameParts = editProfile.fullName.trim().split(" ");
+      const newFirstName = fullNameParts[0] || "";
+      const newLastName = fullNameParts.slice(1).join(" ") || "";
+
+      const updatedProfile: UserProfile = {
+        ...profile,
         fullName: editProfile.fullName,
         role: editProfile.role,
         location: editProfile.location,
         social: { ...editProfile.social },
-        id: user.id, // Ensure ID is included
+        personal: {
+          ...profile.personal,
+          firstName: newFirstName,
+          lastName: newLastName,
+        },
+        address: { ...profile.address },
+        avatarUrl: profile.avatarUrl,
       };
+
       const response = await fetch(
-        `http://localhost:5000/api/user-profiles/${user.id || userId}`,
+        `http://localhost:5000/api/crm/user-profiles/${profile._id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedUser),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedProfile),
         }
       );
-      if (!response.ok) throw new Error(await response.text());
-      setUser(updatedUser);
+
+      if (!response.ok) {
+        throw new Error("Failed to save profile");
+      }
+
+      setProfile(updatedProfile);
+      setEditPersonal({
+        ...editPersonal,
+        firstName: newFirstName,
+        lastName: newLastName,
+      });
       setIsEditingProfile(false);
       setError(null);
-    } catch (err) {
-      setError(`Failed to update profile: ${err.message}`);
+    } catch (err: any) {
+      setError(`Failed to save profile: ${err.message}`);
       console.error(err);
     }
   };
 
   const handleSavePersonal = async () => {
+    if (!profile?._id) {
+      setError("Profile ID not found");
+      return;
+    }
+
     try {
-      const updatedUser = {
-        ...user,
+      const updatedProfile: UserProfile = {
+        ...profile,
         personal: { ...editPersonal },
-        id: user.id,
-      }; // Ensure ID is included
+        fullName: `${editPersonal.firstName} ${editPersonal.lastName}`.trim(),
+        role: profile.role,
+        location: profile.location,
+        social: { ...profile.social },
+        address: { ...profile.address },
+        avatarUrl: profile.avatarUrl,
+      };
+
       const response = await fetch(
-        `http://localhost:5000/api/user-profiles/${user.id || userId}`,
+        `http://localhost:5000/api/crm/user-profiles/${profile._id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedUser),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedProfile),
         }
       );
-      if (!response.ok) throw new Error(await response.text());
-      setUser(updatedUser);
+
+      if (!response.ok) {
+        throw new Error("Failed to save personal information");
+      }
+
+      setProfile(updatedProfile);
+      setEditProfile({
+        ...editProfile,
+        fullName: updatedProfile.fullName,
+      });
       setIsEditingPersonal(false);
       setError(null);
-    } catch (err) {
-      setError(`Failed to update personal information: ${err.message}`);
+    } catch (err: any) {
+      setError(`Failed to save personal information: ${err.message}`);
       console.error(err);
     }
   };
 
   const handleSaveAddress = async () => {
+    if (!profile?._id) {
+      setError("Profile ID not found");
+      return;
+    }
+
     try {
-      const updatedUser = { ...user, address: { ...editAddress }, id: user.id }; // Ensure ID is included
+      const updatedProfile: UserProfile = {
+        ...profile,
+        address: { ...editAddress },
+        fullName: profile.fullName,
+        role: profile.role,
+        location: profile.location,
+        social: { ...profile.social },
+        personal: { ...profile.personal },
+        avatarUrl: profile.avatarUrl,
+      };
+
       const response = await fetch(
-        `http://localhost:5000/api/user-profiles/${user.id || userId}`,
+        `http://localhost:5000/api/crm/user-profiles/${profile._id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedUser),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedProfile),
         }
       );
-      if (!response.ok) throw new Error(await response.text());
-      setUser(updatedUser);
+
+      if (!response.ok) {
+        throw new Error("Failed to save address");
+      }
+
+      setProfile(updatedProfile);
       setIsEditingAddress(false);
       setError(null);
-    } catch (err) {
-      setError(`Failed to update address: ${err.message}`);
+    } catch (err: any) {
+      setError(`Failed to save address: ${err.message}`);
       console.error(err);
     }
   };
 
-  const handleDeleteProfile = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/user-profiles/${user.id || userId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (!response.ok) throw new Error(await response.text());
-      setUser({
-        avatarUrl:
-          "https://www.shutterstock.com/image-vector/blank-avatar-photo-place-holder-600nw-1095249842.jpg",
-        fullName: "",
-        role: "",
-        location: "",
-        social: {
-          facebook: "#",
-          twitter: "#",
-          linkedin: "#",
-          instagram: "#",
-        },
-        personal: {
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          bio: "",
-        },
-        address: {
-          country: "",
-          cityState: "",
-          postalCode: "",
-          taxId: "",
-        },
-      });
-      setError(null);
-    } catch (err) {
-      setError(`Failed to delete profile: ${err.message}`);
-      console.error(err);
-    }
-  };
+  
 
   const handleCancelProfile = () => {
+    setEditProfile({
+      fullName: profile?.fullName || "",
+      role: profile?.role || "",
+      location: profile?.location || "",
+      social: profile?.social || {
+        facebook: "",
+        twitter: "",
+        linkedin: "",
+        instagram: "",
+      },
+    });
     setIsEditingProfile(false);
   };
 
   const handleCancelPersonal = () => {
+    setEditPersonal({
+      firstName: profile?.personal.firstName || "",
+      lastName: profile?.personal.lastName || "",
+      email: profile?.personal.email || "",
+      phone: profile?.personal.phone || "",
+      bio: profile?.personal.bio || "",
+    });
     setIsEditingPersonal(false);
   };
 
   const handleCancelAddress = () => {
+    setEditAddress({
+      country: profile?.address.country || "",
+      cityState: profile?.address.cityState || "",
+      postalCode: profile?.address.postalCode || "",
+      taxId: profile?.address.taxId || "",
+    });
     setIsEditingAddress(false);
   };
 
@@ -361,6 +451,29 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
     setEditAddress((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("userEmail");
+    router.push("/login");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-emerald-50 dark:bg-gray-900">
+        <p className="text-lg text-gray-700 dark:text-gray-300">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-emerald-50 dark:bg-gray-900">
+        <p className="text-lg text-red-700 dark:text-red-300">
+          Profile not found
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-emerald-50 dark:bg-gray-900 min-h-screen">
       {error && (
@@ -377,7 +490,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Image
-                src={user.avatarUrl}
+                src="https://www.shutterstock.com/image-vector/blank-avatar-photo-place-holder-600nw-1095249842.jpg"
                 alt="avatar"
                 width={64}
                 height={64}
@@ -442,7 +555,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Image
-                src={user.avatarUrl}
+                src="https://www.shutterstock.com/image-vector/blank-avatar-photo-place-holder-600nw-1095249842.jpg"
                 alt="avatar"
                 width={64}
                 height={64}
@@ -450,25 +563,50 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
               />
               <div>
                 <h3 className="text-xl font-semibold text-blue-900 dark:text-white">
-                  {user.fullName}
+                  {profile.fullName || "Not specified"}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 text-sm">
-                  {user.role}  |  {user.location}
+                  {profile.role || "Not specified"} |{" "}
+                  {profile.location || "Not specified"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <a href={user.social.facebook} aria-label="Facebook">
-                <Facebook className="w-5 h-5 text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300" />
+              <a href={profile.social.facebook || "#"} aria-label="Facebook">
+                <Facebook
+                  className={`w-5 h-5 ${
+                    profile.social.facebook
+                      ? "text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300"
+                      : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                  }`}
+                />
               </a>
-              <a href={user.social.twitter} aria-label="Twitter">
-                <Twitter className="w-5 h-5 text-slate-600 dark:text-slate-300 hover:text-blue-400 dark:hover:text-blue-300" />
+              <a href={profile.social.twitter || "#"} aria-label="Twitter">
+                <Twitter
+                  className={`w-5 h-5 ${
+                    profile.social.twitter
+                      ? "text-slate-600 dark:text-slate-300 hover:text-blue-400 dark:hover:text-blue-300"
+                      : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                  }`}
+                />
               </a>
-              <a href={user.social.linkedin} aria-label="LinkedIn">
-                <Linkedin className="w-5 h-5 text-slate-600 dark:text-slate-300 hover:text-blue-800 dark:hover:text-blue-300" />
+              <a href={profile.social.linkedin || "#"} aria-label="LinkedIn">
+                <Linkedin
+                  className={`w-5 h-5 ${
+                    profile.social.linkedin
+                      ? "text-slate-600 dark:text-slate-300 hover:text-blue-800 dark:hover:text-blue-300"
+                      : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                  }`}
+                />
               </a>
-              <a href={user.social.instagram} aria-label="Instagram">
-                <Instagram className="w-5 h-5 text-slate-600 dark:text-slate-300 hover:text-pink-500 dark:hover:text-pink-300" />
+              <a href={profile.social.instagram || "#"} aria-label="Instagram">
+                <Instagram
+                  className={`w-5 h-5 ${
+                    profile.social.instagram
+                      ? "text-slate-600 dark:text-slate-300 hover:text-pink-500 dark:hover:text-pink-300"
+                      : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                  }`}
+                />
               </a>
             </div>
           </div>
@@ -547,7 +685,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 First Name
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.personal.firstName}
+                {profile.personal.firstName || "Not specified"}
               </p>
             </div>
             <div>
@@ -555,7 +693,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Last Name
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.personal.lastName}
+                {profile.personal.lastName || "Not specified"}
               </p>
             </div>
             <div>
@@ -563,7 +701,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Email address
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.personal.email}
+                {profile.personal.email || "Not specified"}
               </p>
             </div>
             <div>
@@ -571,7 +709,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Phone
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.personal.phone}
+                {profile.personal.phone || "Not specified"}
               </p>
             </div>
             <div className="col-span-2">
@@ -579,7 +717,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Bio
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.personal.bio}
+                {profile.personal.bio || "Not specified"}
               </p>
             </div>
           </div>
@@ -647,7 +785,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Country
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.address.country}
+                {profile.address.country || "Not specified"}
               </p>
             </div>
             <div>
@@ -655,7 +793,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 City/State
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.address.cityState}
+                {profile.address.cityState || "Not specified"}
               </p>
             </div>
             <div>
@@ -663,7 +801,7 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 Postal Code
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.address.postalCode}
+                {profile.address.postalCode || "Not specified"}
               </p>
             </div>
             <div>
@@ -671,31 +809,25 @@ const UserProfile: React.FC<{ userId?: string }> = ({ userId = "1" }) => {
                 TAX ID
               </p>
               <p className="text-gray-900 dark:text-white">
-                {user.address.taxId}
+                {profile.address.taxId || "Not specified"}
               </p>
             </div>
           </div>
         )}
       </Card>
 
-      {/* <div className="flex justify-end">
-         <button
-          onClick={handleDeleteProfile}
+      <div className="fixed bottom-6 right-6 flex gap-4">
+     
+        <button
+          onClick={handleLogout}
           className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700"
+          type="button"
         >
-          Delete Profile
-        </button> 
-      </div> */}
+          Logout
+        </button>
+      </div>
     </div>
   );
 };
 
-export default UserProfile;
-
-
-
-
-
-
-
-
+export default ProfilePage;

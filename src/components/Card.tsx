@@ -20,20 +20,7 @@ export default function Card({
         <h2 className="text-base font-medium text-gray-800 dark:text-white">
           {title}
         </h2>
-        <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-300">
-          <button
-            aria-label="Refresh"
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
-          >
-            <RefreshCw size={16} />
-          </button>
-          <button
-            aria-label="More actions"
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
-          >
-            <MoreVertical size={16} />
-          </button>
-        </div>
+        
       </header>
       <div className="flex-1 min-h-0">{children}</div>
     </section>

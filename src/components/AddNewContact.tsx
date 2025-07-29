@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 interface Contact {
-  id: number;
+  id: string;
   name: string;
   dob: string;
   email: string;
