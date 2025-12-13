@@ -33,8 +33,9 @@ export default function CampaignDetail() {
         if (!res.ok) throw new Error("Campaign not found");
         const campaignData: CampaignData = await res.json();
         setCampaign(campaignData);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch campaign data");
+      } catch (err: Error | unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch campaign data";
+        setError(errorMessage);
         console.error(err);
       } finally {
         setLoading(false);

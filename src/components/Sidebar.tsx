@@ -1,19 +1,11 @@
-
 "use client";
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+
+import React, {  } from "react";
 import { useRouter } from "next/router";
 import {
-  Menu,
-  Phone,
-  CheckSquare,
-  Megaphone,
-  Calendar,
-  Building,
-  Handshake,
-  UserPlus,
-  CalendarClock,
-  ChevronLeft,
+  Menu, Phone, CheckSquare, Megaphone,
+  CalendarClock, Building, Handshake,
+  UserPlus, ChevronLeft
 } from "lucide-react";
 
 interface SidebarProps {
@@ -29,152 +21,71 @@ export function Sidebar({
   onToggleSidebar,
   className = "",
 }: SidebarProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const router = useRouter();
+
   const isMobile = width <= 640;
-  const isTablet = width > 640 && width <= 1024;
+  const showOverlay = isMobile && isOpen;
 
-  const handleItemClick = (to: string) => {
-    router.push(to);
-    if (isMobile && isOpen) onToggleSidebar(); // Close only in mobile
-  };
-
-  // Show Chevron in mobile and tablet when open
-  const showChevron = mounted && (isMobile || isTablet) && isOpen;
-
-  // Debug log to verify props
+  const menuItems = [
+    { label: "Dashboard", icon: Menu, href: "/dashboard" },
+    { label: "Contacts", icon: Phone, href: "/contact" },
+    { label: "Accounts", icon: Building, href: "/account" },
+    { label: "Tasks", icon: CheckSquare, href: "/task" },
+    { label: "Campaigns", icon: Megaphone, href: "/campaign" },
+    { label: "Meetings", icon: CalendarClock, href: "/meeting" },
+    { label: "Leads", icon: UserPlus, href: "/leads" },
+    { label: "Deals", icon: Handshake, href: "/deal" },
+  ];
 
   return (
     <>
-      {isMobile && isOpen && (
+      {showOverlay && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={onToggleSidebar}
         />
       )}
 
-      <aside
-        className={`bg-gradient-to-b from-emerald-600 to-emerald-800 dark:from-gray-900 dark:to-gray-800 flex flex-col text-white overflow-auto transition-all duration-300 ${
-          isMobile
-            ? isOpen
-              ? "fixed z-50 top-0 left-0 w-52 h-screen"
-              : "hidden"
-            : isOpen
-            ? "block w-64 h-full"
-            : "hidden"
-        } ${className}`}
-      >
-        <div className="flex items-center justify-between h-12 sm:h-14 md:h-16 border-b border-emerald-500/30 px-2 ">
-          <span className="text-base sm:text-lg md:text-2xl font-bold  mx-auto">
-            CRM
-          </span>
-
-          {showChevron && (
+      <aside className={`fixed md:relative z-50 h-screen bg-gradient-to-b from-emerald-700 to-emerald-900 text-white transition-transform duration-300 ${
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      } ${isMobile ? "w-64" : "w-64"} ${className}`}>
+        <div className="flex items-center justify-between p-4 border-b border-emerald-600">
+          <h1 className="text-2xl font-bold">CRM</h1>
+          {(isMobile || width <= 1024) && isOpen && (
             <button
-              aria-label="Close sidebar"
               onClick={onToggleSidebar}
-              className="p-2 rounded-md text-emerald-100 hover:text-white hover:bg-white/10 transition-all"
+              title="Close sidebar"
+              aria-label="Close sidebar"
+              className="p-2 hover:bg-white/10 rounded"
             >
-              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronLeft className="w-6 h-6" />
             </button>
           )}
         </div>
 
-        <nav className="flex-1 mt-2 sm:mt-3 md:mt-4">
-          <ul>
-            {[
-              { label: "Dashboard", icon: Menu, to: "/dashboard" },
-              { label: "Contacts", icon: Phone, to: "/contact" },
-              { label: "Account", icon: Building, to: "/account" },
-              { label: "Task", icon: CheckSquare, to: "/task" },
-              { label: "Campaign", icon: Megaphone, to: "/campaign" },
-              { label: "Meeting", icon: CalendarClock, to: "/meeting" },
-              { label: "Leads", icon: UserPlus, to: "/leads" },
-              { label: "Deals", icon: Handshake, to: "/deal" },
-            ].map(({ label, icon: Icon, to }) => {
-              const active = router.pathname === to;
-              return (
-                <li
-                  key={label}
-                  className={`mx-1 sm:mx-2 my-1 rounded-lg transition-all duration-200 ${
-                    active
-                      ? "bg-white/20 backdrop-blur-sm border border-white/10 shadow-lg"
-                      : "hover:bg-white/10 hover:backdrop-blur-sm"
-                  }`}
-                >
-                  <div
-                    onClick={() => handleItemClick(to)}
-                    className={`flex items-center px-2 py-1 sm:px-3 sm:py-2 md:px-4 md:py-3 space-x-0 sm:space-x-3 cursor-pointer ${
-                      active
-                        ? "text-white font-semibold"
-                        : "text-emerald-100 dark:text-gray-300"
-                    }`}
-                  >
-                    <Icon className="hidden sm:block w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-xs sm:text-sm md:text-base">
-                      {label}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+        <nav className="p-4 space-y-2">
+          {menuItems.map(({ label, icon: Icon, href }) => {
+            const active = router.pathname === href;
+            return (
+              <button
+                key={label}
+                onClick={() => {
+                  router.push(href);
+                  if (isMobile) onToggleSidebar();
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                  active
+                    ? "bg-white/20 shadow-lg font-semibold"
+                    : "hover:bg-white/10"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{label}</span>
+              </button>
+            );
+          })}
         </nav>
-
-       
       </aside>
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

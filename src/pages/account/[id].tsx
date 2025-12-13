@@ -2,7 +2,6 @@
 "use client";
 import { useRouter } from "next/router";
 import { useEffect, useState, useRef } from "react";
-import { Plus, Sliders } from "lucide-react";
 
 interface Account {
   id: string;
@@ -32,9 +31,14 @@ export default function AccountDetail() {
         if (!res.ok) throw new Error("Account not found");
         const accountData: Account = await res.json();
         setAccount(accountData);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch account data");
-        console.error(err);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message || "Failed to fetch account data");
+          console.error(err);
+        } else {
+          setError("Failed to fetch account data");
+          console.error(err);
+        }
       } finally {
         setLoading(false);
       }

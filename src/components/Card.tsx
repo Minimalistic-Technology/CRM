@@ -1,5 +1,4 @@
 import React from "react";
-import { RefreshCw, MoreVertical } from "lucide-react";
 
 export default function Card({
   title,

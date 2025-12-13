@@ -34,8 +34,9 @@ export default function DealDetail() {
         if (!res.ok) throw new Error("Deal not found");
         const dealData: Deal = await res.json();
         setDeal(dealData);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch deal data");
+      } catch (err: Error | unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch deal data";
+        setError(errorMessage);
         console.error(err);
       } finally {
         setLoading(false);

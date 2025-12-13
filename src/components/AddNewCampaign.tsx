@@ -29,7 +29,6 @@ export default function AddNewCampaign({
   onCancel,
   isUpdating,
   error,
-  setError,
 }: AddNewCampaignProps) {
   return (
     <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">

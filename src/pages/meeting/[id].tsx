@@ -29,8 +29,9 @@ export default function MeetingDetail() {
         if (!res.ok) throw new Error("Meeting not found");
         const meetingData: MeetingItem = await res.json();
         setMeeting(meetingData);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch meeting data");
+      } catch (err: Error | unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch meeting data";
+        setError(errorMessage);
         console.error(err);
       } finally {
         setLoading(false);

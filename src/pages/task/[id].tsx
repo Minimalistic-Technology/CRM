@@ -30,8 +30,9 @@ export default function TaskDetail() {
         if (!res.ok) throw new Error("Task not found");
         const taskData: Task = await res.json();
         setTask(taskData);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch task data");
+      } catch (err: Error | unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch task data";
+        setError(errorMessage);
         console.error(err);
       } finally {
         setLoading(false);

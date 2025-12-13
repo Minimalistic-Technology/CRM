@@ -145,10 +145,11 @@ export default function AddNewAccount({
         {/* Type & Annual Revenue */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="account-type" className="block text-sm font-medium text-gray-700 mb-1">
               Account Type
             </label>
             <select
+              id="account-type"
               name="type"
               value={form.type}
               onChange={handleChange}
